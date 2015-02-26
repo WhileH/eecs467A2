@@ -87,7 +87,7 @@ status_loop ()
   return;
 }
 
-vector<double> calculate_angles(vector<double> coords){
+void move_to_position(vector<double> coords, dynamixel_command_list_t cmds){
   /* coords:
    * [0] = x
    * [1] = y
@@ -117,28 +117,41 @@ vector<double> calculate_angles(vector<double> coords){
   angles[3] = -1*M_PI - angles[1] - angles[2];
   angles[4] = 0;
 
-  cout << "R_squared: " << R_squared << endl;
-  cout << "M_squared: " << M_squared << endl;
-  cout << "alpha: " << alpha << endl;
+  //cout << "R_squared: " << R_squared << endl;
+  //cout << "M_squared: " << M_squared << endl;
+  //cout << "alpha: " << alpha << endl;
   //cout << "beta_num: " << (-(d3*d3) + (d2*d2) + M_squared) << endl;
   //cout << "beta_denom: " << (2.0 * d2 * sqrt(M_squared)) << endl;
-  cout << "beta: " << beta << endl << endl;
+  //cout << "beta: " << beta << endl << endl;
   //cout << "gamma_num: " << ((-1)*M_squared + (d2*d2) + (d3*d3)) << endl;
   //cout << "gamma_denom: " << (2 * d2 * d3) << endl;
-  cout << "gamma: " << gamma << endl << endl;
-  cout << endl;
+  //cout << "gamma: " << gamma << endl << endl;
+  //cout << endl;
   cout << "Base: " << angles[0] << endl;
   cout << "Shoulder: " << angles[1] << endl;
   cout << "Elbow: " << angles[2] << endl;
   cout << "Wrist Bend: " << angles[3] << endl;
   cout << "Wrist Rotate: " << angles[4] << endl;
-  return angles;
+
+  int servo_order[5] = {0, 4, 3, 2, 1};
+  for( auto i : servo_order){
+    //cout << "angles[" << i << "]: " << angles[i] << endl;
+    //if(i == 0){
+    cmds.commands[i].utime = utime_now();
+    cmds.commands[i].position_radians = angles[i];
+    dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
+    //}
+    usleep (1000000);
+  }
+  cout << endl << endl;
+
+  return;
 }
 
 void command_loop()
 {
   const int hz = 30;
-
+  int servo_up[5] = {1, 2, 3, 4, 0};
   dynamixel_command_list_t cmds;
   cmds.len = NUM_SERVOS;
   cmds.commands = (dynamixel_command_t*) calloc(NUM_SERVOS, sizeof(dynamixel_command_t));
@@ -146,60 +159,82 @@ void command_loop()
   // set arm to home position
   for (int id = 0; id < NUM_SERVOS; id++) {
     cmds.commands[id].utime = utime_now ();
-    if(id == 5)
-      cmds.commands[id].position_radians = M_PI/2.0;
-    else
+    if(id == 5){
       cmds.commands[id].position_radians = 0.0;
-    cmds.commands[id].speed = 0.075;
-    cmds.commands[id].max_torque = 0.75;
+      cmds.commands[id].max_torque = 0.75;
+      cmds.commands[id].speed = 0.1;
+    }
+    else{
+      cmds.commands[id].position_radians = 0.0;
+      cmds.commands[id].max_torque = 0.5;
+      cmds.commands[id].speed = 0.075;
+    }
+    
     dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
     usleep (1000000/hz);
   }
   
+  usleep (3000000);
+
+  // cin x, y, z, theta1, theta2, theta3
+  vector<double> desired(6);  // x, y, z, theta1, theta2, theta3
+  // (x, y, z) = location in global position to move grippers to
+  // theta1 = roll
+  // theta2 = pitch
+  // theta3 = yaw ? 
+  desired[0] = desired[1] = desired[2] = desired[3] = desired[4] = desired[5] = 0.31;
   
   while(1){
-    // cin x, y, z, theta1, theta2, theta3
-    vector<double> desired(6);  // x, y, z, theta1, theta2, theta3
-    // (x, y, z) = location in global position to move grippers to
-    // theta1 = roll
-    // theta2 = pitch
-    // theta3 = yaw ? 
-    desired[0] = desired[1] = desired[2] = desired[3] = desired[4] = desired[5] = 0.31;
-    cout << "Select a position to move to" << endl;
-    while((desired[0] > 0.15) || (desired[0] < -0.15)){
-      cout << "x: ";
-      cin >> desired[0];
+    char new_pos = '-';
+    cout << "New position? (y/n)" << endl;
+    cin >> new_pos;
+    if(new_pos == 'y'){
+      desired[0] = desired[1] = desired[2] = desired[3] = desired[4] = desired[5] = 0.31;
+      cout << "Select a position to move to" << endl;
+      while((desired[0] > 0.15) || (desired[0] < -0.15)){
+	cout << "x: ";
+	cin >> desired[0];
+      }
+      while((desired[1] > 0.15) || (desired[1] < -0.15)){
+	cout << endl << "y: ";
+	cin >> desired[1];
+      }
+      while((desired[2] > 0.15) || (desired[2] < -0.15)){
+	cout << endl << "z: ";
+	cin >> desired[2];
+      }
+      cout << endl << "theta1: ";
+      cin >> desired[3];
+      cout << endl << "theta2: ";
+      cin >> desired[4];
+      cout << endl << "theta3: ";
+      cin >> desired[5];
+      cout << endl << endl;
     }
-    while((desired[1] > 0.15) || (desired[1] < -0.15)){
-      cout << endl << "y: ";
-      cin >> desired[1];
-    }
-    while((desired[2] > 0.15) || (desired[2] < -0.15)){
-      cout << endl << "z: ";
-      cin >> desired[2];
-    }
-    cout << endl << "theta1: ";
-    cin >> desired[3];
-    cout << endl << "theta2: ";
-    cin >> desired[4];
-    cout << endl << "theta3: ";
-    cin >> desired[5];
-    cout << endl << endl;
     // calculate servo positions
-    vector<double> angles(5);
-    angles = calculate_angles(desired);
-    for( int i = 0; i < 5; ++i){
-      //cout << "angles[" << i << "]: " << angles[i] << endl;
-      //if(i == 0){
-	cmds.commands[i].utime = utime_now();
-	cmds.commands[i].position_radians = angles[i];
-	cmds.commands[i].speed = 0.075;
-	cmds.commands[i].max_torque = 0.45;
-	dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
-	//}
-      usleep (3000000/hz);
+    move_to_position(desired, cmds);
+    usleep(2000000);
+    cmds.commands[5].position_radians = M_PI/2.0;
+    dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
+    usleep(2500000);
+    for(auto i : servo_up){
+      cmds.commands[i].utime = utime_now();
+      cmds.commands[i].position_radians = 0.0;
+      dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
+      usleep(1000000);
     }
-    cout << endl << endl;
+    usleep(3000000);
+    move_to_position(desired, cmds);
+    usleep(3000000);
+    cmds.commands[5].position_radians = 0.0;
+    dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
+    usleep(2500000);
+    for(auto i : servo_up){
+      cmds.commands[i].utime = utime_now();
+      cmds.commands[i].position_radians = 0.0;
+      dynamixel_command_list_t_publish (state.lcm, state.command_channel, &cmds);
+      usleep(1000000);
+    }
   }
 }
 
