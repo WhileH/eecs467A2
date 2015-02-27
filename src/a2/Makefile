@@ -27,24 +27,22 @@ LDFLAGS  = $(LDFLAGS_STD) \
 
 
 #LIB_MAPPING = $(LIB_PATH)/libmapping.a
-LIB_EECS467 = $(LIB_PATH)/libeecs467.a
 
-#LIB_A1 = $(LIB_PATH)/liba1.a
-#LIB_A1_OBJ = occupancy_map.o action_model.o particle_data.o maebot_data.o sensor_model.o odometry_matcher.o path_planning.o 
-#pose_tracker.o 
+LIB_A2 = $(LIB_PATH)/liba2.a
+LIB_A2_OBJ = image_processor.o
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_A2_MASK = $(BIN_PATH)/a2_mask
-ALL = $(BIN_A2_MASK)
+ALL = $(LIB_A2) $(BIN_A2_MASK)
 
 all: $(ALL)
 
-#$(LIB_A1): $(LIB_A1_OBJ) $(LIBDEPS)
-#	@echo "\t$@"
-#	@ar rc $@ $^
+$(LIB_A2): $(LIB_A2_OBJ) $(LIBDEPS)
+	@echo "\t$@"
+	@ar rc $@ $^
 
-$(BIN_A2_MASK): a2_mask.o $(LIB_EECS467) $(LIBDEPS)
+$(BIN_A2_MASK): a2_mask.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

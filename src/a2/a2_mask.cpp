@@ -29,6 +29,8 @@
 #include "imagesource/image_u32.h"
 #include "imagesource/image_util.h"
 
+//A2
+#include "image_processor.hpp"
 
 class state_t
 {
@@ -39,6 +41,7 @@ class state_t
         bool                usePic;
         char                *pic_url;
         char                *camera_url;
+        image_processor     im_processor;
         vx_application_t    vxapp;
         vx_world_t          *vxworld;
         zhash_t             *layers;
@@ -75,6 +78,10 @@ class state_t
             running = 1;
             usePic = false;
             gopt = getopt_create(); 
+            corner_coords[0].x = -1;
+            corner_coords[0].y = -1;
+            corner_coords[1].x = -1;
+            corner_coords[1].y = -1;
         }
 
         ~state_t()
@@ -158,7 +165,6 @@ class state_t
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->vxworld,"image");
                 image_u32_t *im; 
-
                 if(state->usePic){
                     im = image_u32_create_from_pnm(state->pic_url); 
                 }
@@ -173,26 +179,8 @@ class state_t
                     }
                     fflush(stdout);
                     isrc->release_frame(isrc,frmd);
-
                 }
-
-                if(im!=NULL){
-                    vx_object_t *vim = vxo_image_from_u32(im,
-                            VXO_IMAGE_FLIPY,
-                            VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
-                    //use pix coords to make a fix image
-                    vx_buffer_add_back (buf,
-                            vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain (
-                                    vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
-                                    vim)));
-                    image_u32_destroy (im);
-                }
-
-                if(state->click_count == 2){
-                    state->click_count = 0;
-                }
-                //printf("%8.3f %8.3f %8.3f %8.3f\n",state->corner_coords[0].x,state->corner_coords[0].y,state->corner_coords[1].x,state->corner_coords[1].y);
-                if(state->corner_coords[0].x != 0 && state->corner_coords[0].y != 0 && state->corner_coords[1].x != 0 && state->corner_coords[1].y != 0){  
+                if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
                     float x1,x2,y1,y2;
                     if(state->corner_coords[0].x < state->corner_coords[1].x){
                         x1 = state->corner_coords[0].x;
@@ -210,18 +198,25 @@ class state_t
                         y1 = state->corner_coords[1].y;
                         y2 = state->corner_coords[0].y;
                     }
-                    float dx = x2 - x1;
-                    float dy = y2 - y1;
-                    //printf("%f %f %f %f\n",x1,x2,y1,y2);
-                    //printf("translate:%f %f %f %f\n",-dy/2-y1/2,dy/2+(480-y2)/2,-dx/2-x1/2,dx/2+(640-x2)/2);
-                    vx_object_t *rect_y1 = vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(0,-dy/2-(480-y2)/2),vxo_mat_scale2(640,y1),vxo_rect(vxo_mesh_style(vx_black))));
-                    vx_object_t *rect_y2 = vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(0,dy/2+y1/2),vxo_mat_scale2(640,480-y2),vxo_rect(vxo_mesh_style(vx_black))));
-                    vx_object_t *rect_x1 = vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(-dx/2-(640-x2)/2,0),vxo_mat_scale2(x1,480),vxo_rect(vxo_mesh_style(vx_black))));
-                    vx_object_t *rect_x2 = vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain(vxo_mat_translate2(dx/2+x1/2,0),vxo_mat_scale2(640-x2,480),vxo_rect(vxo_mesh_style(vx_black))));
-                    vx_buffer_add_back(buf,rect_y1);
-                    vx_buffer_add_back(buf,rect_y2);
-                    vx_buffer_add_back(buf,rect_x1);
-                    vx_buffer_add_back(buf,rect_x2);
+                    FILE *fp = fopen("mask_rect.txt","w");
+                    fprintf(fp,"%f %f %f %f\n",x1,x2,y1,y2);
+                    fclose(fp);
+                    state->im_processor.image_masking(im,x1,x2,y1,y2);
+                } 
+                if(im != NULL){
+                    vx_object_t *vim = vxo_image_from_u32(im,
+                            VXO_IMAGE_FLIPY,
+                            VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+                    //use pix coords to make a fix image
+                    vx_buffer_add_back (buf,
+                            vxo_pix_coords(VX_ORIGIN_CENTER,vxo_chain (
+                                    vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
+                                    vim)));
+                    image_u32_destroy (im);
+                }
+
+                if(state->click_count == 2){
+                    state->click_count = 0;
                 }
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
