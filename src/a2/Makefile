@@ -29,12 +29,13 @@ LDFLAGS  = $(LDFLAGS_STD) \
 #LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 LIB_A2 = $(LIB_PATH)/liba2.a
-LIB_A2_OBJ = image_processor.o
+LIB_A2_OBJ = hsv.o image_processor.o 
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_A2_MASK = $(BIN_PATH)/a2_mask
-ALL = $(LIB_A2) $(BIN_A2_MASK)
+BIN_A2_COLOR_PICKER = $(BIN_PATH)/a2_color_picker
+ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER)
 
 all: $(ALL)
 
@@ -45,6 +46,11 @@ $(LIB_A2): $(LIB_A2_OBJ) $(LIBDEPS)
 $(BIN_A2_MASK): a2_mask.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_A2_COLOR_PICKER): a2_color_picker.o $(LIB_A2) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
 
 clean:
 	@rm -f *.o *~ *.a

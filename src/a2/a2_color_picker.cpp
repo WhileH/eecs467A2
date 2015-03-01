@@ -31,6 +31,7 @@
 
 //A2
 #include "image_processor.hpp"
+#include "hsv.hpp"
 
 class state_t
 {
@@ -38,17 +39,16 @@ class state_t
         // vx stuff
         bool                running;
         getopt_t            *gopt;
-        bool                usePic;
         char                *pic_url;
-        char                *camera_url;
         image_processor     im_processor;
+        std::deque<max_min_hsv> hsv_ranges;
+        std::deque<uint32_t> color_selected;
+        eecs467::Point<float>   click_point;
+        bool                is_new_selection;
         vx_application_t    vxapp;
         vx_world_t          *vxworld;
         zhash_t             *layers;
         vx_event_handler_t  *vxeh;
-        eecs467::Point<float> last_two_mouse_event;
-        eecs467::Point<float> corner_coords[2];
-        int                 click_count;
         vx_mouse_event_t    last_mouse_event;
         vx_gtk_display_source_t* appwrap;
         pthread_mutex_t     data_mutex; // shared data lock
@@ -72,16 +72,13 @@ class state_t
             vxapp.display_started = display_started;
             vxapp.display_finished = display_finished;
             layers = zhash_create(sizeof(vx_display_t*), sizeof(vx_layer_t*), zhash_ptr_hash, zhash_ptr_equals);
-            click_count = 0;
             pthread_mutex_init (&mutex, NULL);
             pthread_mutex_init (&data_mutex,NULL);
-            running = 1;
-            usePic = false;
+            running = true;
+            is_new_selection = false;
             gopt = getopt_create(); 
-            corner_coords[0].x = -1;
-            corner_coords[0].y = -1;
-            corner_coords[1].x = -1;
-            corner_coords[1].y = -1;
+            click_point.x = -1;
+            click_point.y = -1;
         }
 
         ~state_t()
@@ -109,35 +106,45 @@ class state_t
             // vx_mouse_event_t contains scroll, x/y, and button click events
             if ((mouse->button_mask & VX_BUTTON1_MASK) &&
                     !(state->last_mouse_event.button_mask & VX_BUTTON1_MASK)) {
+                //state->click_point.x = mouse->x;
+                //state->click_point.y = mouse->y;
                 vx_ray3_t ray;
                 vx_camera_pos_compute_ray (pos, mouse->x, mouse->y, &ray);
                 double ground[3];
                 vx_ray3_intersect_xy (&ray, 0, ground);
                 printf ("Mouse clicked at coords: [%8.3f, %8.3f] Ground clicked at coords: [%6.3f, %6.3f]\n",
                         mouse->x, mouse->y, ground[0], ground[1]);
-                if(state->click_count == 0){
-                    state->last_two_mouse_event.x = ground[0];
-                    state->last_two_mouse_event.y = ground[1];
-                    state->click_count += 1;
-                }
-                else if(state->click_count == 1){
-                    state->corner_coords[0].x = state->last_two_mouse_event.x+320;
-                    state->corner_coords[0].y = state->last_two_mouse_event.y+240;
-                    state->corner_coords[1].x = ground[0]+320;
-                    state->corner_coords[1].y = ground[1]+240;
-                    state->click_count += 1;
-                }
-                else{
-                    state->click_count = 0;
-                }
+                state->click_point.x = ground[0];
+                state->click_point.y = ground[1];
+                state->is_new_selection = true;
             }
             state->last_mouse_event = *mouse;
             pthread_mutex_unlock(&state->data_mutex);
             return 0;
         }
+
         static int key_event (vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key)
         {
-            //state_t *state = vxeh->impl;
+            state_t *state = (state_t*)vxeh->impl;
+            pthread_mutex_lock(&state->data_mutex);
+            if(!key->released){
+                if(key->key_code == 'S' || key->key_code == 's'){
+                    //save hsv
+                    FILE *fp = fopen("hsv_range.txt","w");
+                    max_min_hsv hsv_tmp = state->hsv_ranges.back();
+                    hsv_color_t max_hsv = hsv_tmp.get_max_HSV();
+                    hsv_color_t min_hsv = hsv_tmp.get_min_HSV();
+                    fprintf(fp,"%f %f %f %f %f %f\n",min_hsv.H,max_hsv.H,min_hsv.S,max_hsv.S,min_hsv.V,max_hsv.V);
+                    fclose(fp);
+                }
+                else if(key->key_code == VX_KEY_DEL){
+                    if(!state->color_selected.empty() && !state->hsv_ranges.empty()){
+                        state->color_selected.pop_back();
+                        state->hsv_ranges.pop_back();
+                    }
+                }
+            }
+            pthread_mutex_unlock(&state->data_mutex); 
             return 0;
         }
 
@@ -145,83 +152,45 @@ class state_t
         {
             return 0; // Does nothing
         }
+
         static void* render_loop(void* data)
         {
             state_t * state = (state_t*) data;
-            int fps = 60;
-            image_source_t *isrc = NULL;
-            if(!state->usePic){
-                isrc = image_source_open(state->camera_url);
-                if(isrc == NULL){
-                    printf("Error opening device\n");
-                }
-                else{
-                    /*for (int i = 0; i < isrc->num_formats (isrc); i++) {
-                      image_source_format_t ifmt;
-                      isrc->get_format (isrc, i, &ifmt);
-                      printf ("%3d: %4d x %4d (%s)\n",
-                      i, ifmt.width, ifmt.height, ifmt.format);
-                      }*/
-                    isrc->start(isrc);
-                    //printf("isrc->start");
-                }
-            }
+            int fps = 60; 
             while (state->running) {
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->vxworld,"image");
                 image_u32_t *im; 
-                if(state->usePic){
-                    im = image_u32_create_from_pnm(state->pic_url); 
-                }
-                else if(isrc != NULL){
-                    image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
-                    int res = isrc->get_frame(isrc,frmd);
-                    if(res < 0){
-                        printf("get_frame fail\n");
+                im = image_u32_create_from_pnm(state->pic_url);
+                if(state->is_new_selection && state->click_point.x != -1 && state->click_point.y != -1){
+                    max_min_hsv tmp_hsv;
+                    if(state->hsv_ranges.empty()){
+                        tmp_hsv = max_min_hsv();
                     }
                     else{
-                        im = image_convert_u32(frmd);
+                        tmp_hsv = state->hsv_ranges.back();
                     }
-                    fflush(stdout);
-                    isrc->release_frame(isrc,frmd);
-                }
-                if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
-                    float x1,x2,y1,y2;
-                    if(state->corner_coords[0].x < state->corner_coords[1].x){
-                        x1 = state->corner_coords[0].x;
-                        x2 = state->corner_coords[1].x;
-                    } 
-                    else{
-                        x1 = state->corner_coords[1].x;
-                        x2 = state->corner_coords[0].x;
-                    }
-                    if(state->corner_coords[0].y < state->corner_coords[1].y){
-                        y1 = state->corner_coords[0].y;
-                        y2 = state->corner_coords[1].y;
-                    } 
-                    else{
-                        y1 = state->corner_coords[1].y;
-                        y2 = state->corner_coords[0].y;
-                    }
-                    FILE *fp = fopen("mask_rect.txt","w");
-                    fprintf(fp,"%f %f %f %f\n",x1,x2,y1,y2);
-                    fclose(fp);
-                    state->im_processor.image_masking(im,x1,x2,y1,y2);
+                    int x = (int)(state->click_point.x+320);
+                    int y = (int)(state->click_point.y+240);
+                    uint32_t curr_c = im->buf[y*im->stride + x]; 
+                    state->color_selected.push_back(curr_c);
+                    tmp_hsv.updateHSV(state->im_processor.rgb_to_hsv(curr_c));
+                    state->is_new_selection = false;
+                    state->hsv_ranges.push_back(tmp_hsv);
                 } 
+
+                if(!state->hsv_ranges.empty()){
+                    state->im_processor.image_select(im,state->hsv_ranges.back());
+                }
                 if(im != NULL){
                     vx_object_t *vim = vxo_image_from_u32(im,
                             VXO_IMAGE_FLIPY,
                             VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
                     //use pix coords to make a fix image
-                    vx_buffer_add_back (buf,
-                            vxo_chain (
-                                    vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
-                                    vim));
+                    vx_buffer_add_back (buf,vxo_chain (
+                                vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
+                                vim));
                     image_u32_destroy (im);
-                }
-
-                if(state->click_count == 2){
-                    state->click_count = 0;
                 }
                 pthread_mutex_unlock(&state->data_mutex);
                 vx_buffer_swap(buf);
@@ -278,19 +247,11 @@ int main(int argc, char ** argv)
 
     if (strncmp (getopt_get_string (state.gopt, "picurl"), "", 1)) {
         state.pic_url = strdup (getopt_get_string (state.gopt, "picurl"));
-        state.usePic = true;
         printf ("URL: %s\n", state.pic_url);
     }
     else{
-        printf("camera find\n");
-        zarray_t *urls = image_source_enumerate();
-        if(0 == zarray_size(urls)){
-            printf("No camera found.\n");
-            exit(1);
-        }
-        printf("find camera\n");
-        zarray_get(urls,0,&state.camera_url);
-        printf("get camera address\n");
+        printf("no pic URL provided, ABORT\n");
+        exit(EXIT_FAILURE);
     }
     state.init_thread();
     //vx
