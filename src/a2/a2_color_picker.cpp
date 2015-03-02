@@ -39,7 +39,9 @@ class state_t
         // vx stuff
         bool                running;
         getopt_t            *gopt;
+        bool                usePic;
         char                *pic_url;
+        char                *camera_url;
         image_processor     im_processor;
         std::deque<max_min_hsv> hsv_ranges;
         std::deque<uint32_t> color_selected;
@@ -75,6 +77,7 @@ class state_t
             pthread_mutex_init (&mutex, NULL);
             pthread_mutex_init (&data_mutex,NULL);
             running = true;
+            usePic = false;
             is_new_selection = false;
             gopt = getopt_create(); 
             click_point.x = -1;
@@ -157,12 +160,43 @@ class state_t
         {
             state_t * state = (state_t*) data;
             int fps = 60; 
+            image_source_t *isrc = NULL;
+            if(!state->usePic){
+                isrc = image_source_open(state->camera_url);
+                if(isrc == NULL){
+                    printf("Error opening device\n");
+                }
+                else{
+                    /*for (int i = 0; i < isrc->num_formats (isrc); i++) {
+                      image_source_format_t ifmt;
+                      isrc->get_format (isrc, i, &ifmt);
+                      printf ("%3d: %4d x %4d (%s)\n",
+                      i, ifmt.width, ifmt.height, ifmt.format);
+                      }*/
+                    isrc->start(isrc);
+                    //printf("isrc->start");
+                }
+            }
             while (state->running) {
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->vxworld,"image");
                 image_u32_t *im; 
-                im = image_u32_create_from_pnm(state->pic_url);
-                if(state->is_new_selection && state->click_point.x != -1 && state->click_point.y != -1){
+                if(state->usePic){
+                    im = image_u32_create_from_pnm(state->pic_url); 
+                }
+                else if(isrc != NULL){
+                    image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
+                    int res = isrc->get_frame(isrc,frmd);
+                    if(res < 0){
+                        printf("get_frame fail\n");
+                    }
+                    else{
+                        im = image_convert_u32(frmd);
+                    }
+                    fflush(stdout);
+                    isrc->release_frame(isrc,frmd);
+                }
+                if(state->click_point.x != -1 || state->click_point.y != -1){
                     max_min_hsv tmp_hsv;
                     if(state->hsv_ranges.empty()){
                         tmp_hsv = max_min_hsv();
@@ -176,9 +210,10 @@ class state_t
                     state->color_selected.push_back(curr_c);
                     tmp_hsv.updateHSV(state->im_processor.rgb_to_hsv(curr_c));
                     state->is_new_selection = false;
+                    state->click_point.x = -1;
+                    state->click_point.y = -1;
                     state->hsv_ranges.push_back(tmp_hsv);
                 } 
-
                 if(!state->hsv_ranges.empty()){
                     state->im_processor.image_select(im,state->hsv_ranges.back());
                 }
@@ -247,11 +282,19 @@ int main(int argc, char ** argv)
 
     if (strncmp (getopt_get_string (state.gopt, "picurl"), "", 1)) {
         state.pic_url = strdup (getopt_get_string (state.gopt, "picurl"));
+        state.usePic = true;
         printf ("URL: %s\n", state.pic_url);
     }
     else{
-        printf("no pic URL provided, ABORT\n");
-        exit(EXIT_FAILURE);
+        printf("camera find\n");
+        zarray_t *urls = image_source_enumerate();
+        if(0 == zarray_size(urls)){
+            printf("No camera found.\n");
+            exit(1);
+        }
+        printf("find camera\n");
+        zarray_get(urls,0,&state.camera_url);
+        printf("get camera address\n");
     }
     state.init_thread();
     //vx
