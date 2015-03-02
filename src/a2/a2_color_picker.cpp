@@ -41,6 +41,8 @@ class state_t
         getopt_t            *gopt;
         bool                usePic;
         char                *pic_url;
+        int                 im_height;
+        int                 im_width;
         char                *camera_url;
         image_processor     im_processor;
         std::deque<max_min_hsv> hsv_ranges;
@@ -196,7 +198,11 @@ class state_t
                     fflush(stdout);
                     isrc->release_frame(isrc,frmd);
                 }
-                if(state->click_point.x != -1 || state->click_point.y != -1){
+                if(im!= NULL){
+                    state->im_width = im->width;
+                    state->im_height = im->height;
+                }
+                if(im!= NULL && state->click_point.x != -1 || state->click_point.y != -1){
                     max_min_hsv tmp_hsv;
                     if(state->hsv_ranges.empty()){
                         tmp_hsv = max_min_hsv();
@@ -204,9 +210,10 @@ class state_t
                     else{
                         tmp_hsv = state->hsv_ranges.back();
                     }
-                    int x = (int)(state->click_point.x+320);
-                    int y = (int)(state->click_point.y+240);
-                    uint32_t curr_c = im->buf[y*im->stride + x]; 
+                    int x = (int)(state->click_point.x+(state->im_width/2));
+                    int y = (int)(state->click_point.y+(state->im_height/2));
+                    uint32_t curr_c = im->buf[(state->im_height-y)*im->stride + x]; 
+                    printf("get color at %d %d with RGB: %x\n",x,y,curr_c);
                     state->color_selected.push_back(curr_c);
                     tmp_hsv.updateHSV(state->im_processor.rgb_to_hsv(curr_c));
                     state->is_new_selection = false;
@@ -221,6 +228,7 @@ class state_t
                     vx_object_t *vim = vxo_image_from_u32(im,
                             VXO_IMAGE_FLIPY,
                             VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+                    //vx_object_t *vim = vxo_image_from_u32(im,0,0);
                     //use pix coords to make a fix image
                     vx_buffer_add_back (buf,vxo_chain (
                                 vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
@@ -283,7 +291,18 @@ int main(int argc, char ** argv)
     if (strncmp (getopt_get_string (state.gopt, "picurl"), "", 1)) {
         state.pic_url = strdup (getopt_get_string (state.gopt, "picurl"));
         state.usePic = true;
-        printf ("URL: %s\n", state.pic_url);
+        image_u32_t *im; 
+        im = image_u32_create_from_pnm(state.pic_url);
+        if(im != NULL){
+            state.im_width = im->width;
+            state.im_height = im->height; 
+        }
+        else{
+            printf("Unable to open image, ABORT\n");
+            exit(EXIT_FAILURE);
+        }
+        image_u32_destroy(im);
+        printf ("URL: %s Width: %d height: %d\n", state.pic_url,state.im_width,state.im_height);
     }
     else{
         printf("camera find\n");
