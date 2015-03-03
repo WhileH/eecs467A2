@@ -47,6 +47,9 @@ class state_t
         zhash_t             *layers;
         vx_event_handler_t  *vxeh;
         eecs467::Point<float> last_two_mouse_event;
+        //read info from file
+        max_min_hsv         red_hsv;
+        max_min_hsv         green_hsv;
         eecs467::Point<float> corner_coords[2];
         int                 click_count;
         vx_mouse_event_t    last_mouse_event;
@@ -78,10 +81,10 @@ class state_t
             running = 1;
             usePic = false;
             gopt = getopt_create(); 
-            corner_coords[0].x = -1;
-            corner_coords[0].y = -1;
-            corner_coords[1].x = -1;
-            corner_coords[1].y = -1;
+            FILE *fp = fopen("../calibration/mask_rect.txt","r");
+            fscanf(fp,"%f %f %f %f\n",&corner_coords[0].x,&corner_coords[1].x,&corner_coords[0].y,&corner_coords[1].y);
+            red_hsv.read_hsv_from_file("../calibration/red_hsv_range.txt");
+            green_hsv.read_hsv_from_file("../calibration/green_hsv_range.txt");
         }
 
         ~state_t()
@@ -121,10 +124,10 @@ class state_t
                     state->click_count += 1;
                 }
                 else if(state->click_count == 1){
-                    state->corner_coords[0].x = state->last_two_mouse_event.x;
-                    state->corner_coords[0].y = state->last_two_mouse_event.y;
-                    state->corner_coords[1].x = ground[0];
-                    state->corner_coords[1].y = ground[1];
+                    state->corner_coords[0].x = state->last_two_mouse_event.x+320;
+                    state->corner_coords[0].y = state->last_two_mouse_event.y+240;
+                    state->corner_coords[1].x = ground[0]+320;
+                    state->corner_coords[1].y = ground[1]+240;
                     state->click_count += 1;
                 }
                 else{
@@ -186,44 +189,18 @@ class state_t
                     isrc->release_frame(isrc,frmd);
                 }
                 if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
-                    float x1,x2,y1,y2;
-                    if(state->corner_coords[0].x < state->corner_coords[1].x){
-                        x1 = state->corner_coords[0].x;
-                        x2 = state->corner_coords[1].x;
-                    } 
-                    else{
-                        x1 = state->corner_coords[1].x;
-                        x2 = state->corner_coords[0].x;
-                    }
-                    if(state->corner_coords[0].y < state->corner_coords[1].y){
-                        y1 = state->corner_coords[0].y;
-                        y2 = state->corner_coords[1].y;
-                    } 
-                    else{
-                        y1 = state->corner_coords[1].y;
-                        y2 = state->corner_coords[0].y;
-                    }
-                    x1 += im->width/2;
-                    x2 += im->width/2;
-                    y1 += im->height/2;
-                    y2 += im->height/2;
-                    FILE *fp = fopen("mask_rect.txt","w");
-                    fprintf(fp,"%f %f %f %f\n",x1,x2,y1,y2);
-                    fclose(fp);
-                    state->im_processor.image_masking(im,x1,x2,y1,y2);
+                    state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv,state->green_hsv);
                 } 
                 if(im != NULL){
                     vx_object_t *vim = vxo_image_from_u32(im,
                             VXO_IMAGE_FLIPY,
                             VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
                     //use pix coords to make a fix image
-                    vx_buffer_add_back (buf,
-                            vxo_chain (
+                    vx_buffer_add_back (buf,vxo_chain (
                                     vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
                                     vim));
                     image_u32_destroy (im);
                 }
-
                 if(state->click_count == 2){
                     state->click_count = 0;
                 }
@@ -256,9 +233,9 @@ class state_t
             vx_layer_t * layer = vx_layer_create(state->vxworld);
             vx_layer_set_display(layer, disp);
             //important setting for the handler
-            if(state->vxeh != NULL){
-                vx_layer_add_event_handler(layer,state->vxeh);
-            }
+            //if(state->vxeh != NULL){
+            //    vx_layer_add_event_handler(layer,state->vxeh);
+            //}
             pthread_mutex_lock(&state->mutex);
             // store a reference to the world and layer that we associate with each vx_display_t
             zhash_put(state->layers, &disp, &layer, NULL, NULL);

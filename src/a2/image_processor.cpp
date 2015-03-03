@@ -4,8 +4,8 @@
 #include <cfloat>
 void image_processor::image_masking(image_u32_t *im,float x1,float x2,float y1, float y2){
     uint32_t black = 0xff000000;
-    for (int y = 0; y < im->height; y++) {
-        for (int x = 0; x < im->width; x++) {
+    for (int y = 0; y < im->height; ++y) {
+        for (int x = 0; x < im->width; ++x) {
             if(x<x1 || x>x2 || y<(im->height-y2) || y>(im->height-y1)){
                 im->buf[y*im->stride + x] = black;
             }
@@ -13,17 +13,37 @@ void image_processor::image_masking(image_u32_t *im,float x1,float x2,float y1, 
     }  
 }
 
+void image_processor::blob_detection(image_u32_t *im, float x1,float x2,float y1,float y2,max_min_hsv red,max_min_hsv green){
+    uint32_t black = 0xff000000;
+    hsv_color_t tmp_hsv;
+    hsv_color_t max_red_hsv = red.get_max_HSV();
+    hsv_color_t min_red_hsv = red.get_min_HSV();
+    hsv_color_t max_green_hsv = green.get_max_HSV();
+    hsv_color_t min_green_hsv = green.get_min_HSV();
+    image_masking(im,x1,x2,y1,y2);
+    for(int y = (int)(im->height - y2);y<=(int)(im->height-y1);++y){
+        for(int x = (int)x1;x<=(int)x2;++x){
+            tmp_hsv = rgb_to_hsv(im->buf[y*im->stride + x]);    
+            if(is_hsv_in_range(tmp_hsv,max_red_hsv,min_red_hsv) || is_hsv_in_range(tmp_hsv,max_green_hsv,min_green_hsv)){
+                continue;
+            }
+            else{
+                im->buf[y*im->stride + x] = black;
+            }
+        }
+    }
+}
+
 void image_processor::image_select(image_u32_t *im,max_min_hsv hsv){
     hsv_color_t max_hsv = hsv.get_max_HSV();
     hsv_color_t min_hsv = hsv.get_min_HSV();
     hsv_color_t tmp_hsv;
     uint32_t light_purple = 0xffff73df;
-    for (int y = 0; y < im->height; y++) {
-        for (int x = 0; x < im->width; x++) {
+    for (int y = 0; y < im->height; ++y) {
+        for (int x = 0; x < im->width; ++x) {
             tmp_hsv = rgb_to_hsv(im->buf[y*im->stride + x]);    
-            if(tmp_hsv.H <= max_hsv.H && tmp_hsv.S <= max_hsv.S && tmp_hsv.V <= max_hsv.V &&
-                tmp_hsv.H >= min_hsv.H && tmp_hsv.S >= min_hsv.S && tmp_hsv.V >= min_hsv.V){
-               im->buf[y*im->stride + x] = light_purple; 
+            if(is_hsv_in_range(tmp_hsv,max_hsv,min_hsv)) {
+                im->buf[y*im->stride + x] = light_purple; 
             }
         }
     }  
@@ -65,3 +85,8 @@ hsv_color_t image_processor::rgb_to_hsv(uint32_t abgr){
     }
     return hsv_tmp;
 } 
+
+bool image_processor::is_hsv_in_range(hsv_color_t hsv,hsv_color_t max,hsv_color_t min){
+    return hsv.H <= max.H && hsv.S <= max.S && hsv.V <= max.V &&
+            hsv.H >= min.H && hsv.S >= min.S && hsv.V >= min.V;
+}

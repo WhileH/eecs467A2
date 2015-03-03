@@ -35,7 +35,8 @@ LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
 BIN_A2_MASK = $(BIN_PATH)/a2_mask
 BIN_A2_COLOR_PICKER = $(BIN_PATH)/a2_color_picker
-ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER)
+BIN_A2_BLOB_DETECTOR = $(BIN_PATH)/a2_blob_detector
+ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR)
 
 all: $(ALL)
 
@@ -51,6 +52,9 @@ $(BIN_A2_COLOR_PICKER): a2_color_picker.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
+$(BIN_A2_BLOB_DETECTOR): a2_blob_detector.o $(LIB_A2) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -f *.o *~ *.a

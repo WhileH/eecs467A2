@@ -1,5 +1,8 @@
 #include "hsv.hpp"
 #include <cfloat>
+#include <stdio.h>
+#include <stdlib.h>
+
 max_min_hsv::max_min_hsv(){
     max_HSV.H = FLT_MIN;
     max_HSV.S = FLT_MIN;
@@ -27,6 +30,17 @@ void max_min_hsv::updateHSV(hsv_color_t new_HSV){
     }
     if(new_HSV.S < min_HSV.S){
         min_HSV.S = new_HSV.S;
+    }
+}
+
+void max_min_hsv::read_hsv_from_file(char *filename){
+    FILE *fp = fopen(filename,"r");
+    if(fp == NULL){
+        printf("Can't open file %s, ABORT.\n",filename);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fscanf(fp,"%f %f %f %f %f %f\n",&min_HSV.H,&max_HSV.H,&min_HSV.S,&max_HSV.S,&min_HSV.V,&max_HSV.V);
     }
 }
 
