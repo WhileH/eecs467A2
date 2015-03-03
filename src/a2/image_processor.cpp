@@ -21,8 +21,8 @@ void image_processor::image_select(image_u32_t *im,max_min_hsv hsv){
     for (int y = 0; y < im->height; y++) {
         for (int x = 0; x < im->width; x++) {
             tmp_hsv = rgb_to_hsv(im->buf[y*im->stride + x]);    
-            if(tmp_hsv.H < max_hsv.H && tmp_hsv.S < max_hsv.S && tmp_hsv.V < max_hsv.V &&
-                tmp_hsv.H > min_hsv.H && tmp_hsv.S > min_hsv.S && tmp_hsv.V > min_hsv.V){
+            if(tmp_hsv.H <= max_hsv.H && tmp_hsv.S <= max_hsv.S && tmp_hsv.V <= max_hsv.V &&
+                tmp_hsv.H >= min_hsv.H && tmp_hsv.S >= min_hsv.S && tmp_hsv.V >= min_hsv.V){
                im->buf[y*im->stride + x] = light_purple; 
             }
         }

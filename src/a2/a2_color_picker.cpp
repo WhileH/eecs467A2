@@ -48,7 +48,6 @@ class state_t
         std::deque<max_min_hsv> hsv_ranges;
         std::deque<uint32_t> color_selected;
         eecs467::Point<float>   click_point;
-        bool                is_new_selection;
         vx_application_t    vxapp;
         vx_world_t          *vxworld;
         zhash_t             *layers;
@@ -80,7 +79,6 @@ class state_t
             pthread_mutex_init (&data_mutex,NULL);
             running = true;
             usePic = false;
-            is_new_selection = false;
             gopt = getopt_create(); 
             click_point.x = -1;
             click_point.y = -1;
@@ -121,7 +119,6 @@ class state_t
                         mouse->x, mouse->y, ground[0], ground[1]);
                 state->click_point.x = ground[0];
                 state->click_point.y = ground[1];
-                state->is_new_selection = true;
             }
             state->last_mouse_event = *mouse;
             pthread_mutex_unlock(&state->data_mutex);
@@ -213,10 +210,10 @@ class state_t
                     int x = (int)(state->click_point.x+(state->im_width/2));
                     int y = (int)(state->click_point.y+(state->im_height/2));
                     uint32_t curr_c = im->buf[(state->im_height-y)*im->stride + x]; 
-                    printf("get color at %d %d with RGB: %x\n",x,y,curr_c);
                     state->color_selected.push_back(curr_c);
                     tmp_hsv.updateHSV(state->im_processor.rgb_to_hsv(curr_c));
-                    state->is_new_selection = false;
+                    hsv_color_t h_t = state->im_processor.rgb_to_hsv(curr_c);
+                    printf("get color at %d %d with RGB: %x with hsv: %f %f %f\n",x,y,curr_c,h_t.H,h_t.S,h_t.V);
                     state->click_point.x = -1;
                     state->click_point.y = -1;
                     state->hsv_ranges.push_back(tmp_hsv);
