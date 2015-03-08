@@ -8,19 +8,29 @@ namespace eecs467 {
 
 class BoardState {
 
-private:
+private: 
 
-	std::vector <char> board (9, '.'); // init board
+	/*
+		uses blob detection and converted coordinates to determine
+		the state of the board	
+	*/	
+	void determineState();
+
+public: 
 	
-public:
+	std::vector <std::vector <char> > grid;
 	
 	BoardState();
 	
-	void updateBoard();
+	/*
+		updates the grid to match the real world tictactoe board
+	*/
+	void getBoard();
 	
-	void decideMove();
-
-	void outputBoard();
+	/* 
+		outputs the grid
+	*/
+	void displayGrid();
 
 };
 
