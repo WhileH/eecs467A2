@@ -83,6 +83,7 @@ class state_t
             gopt = getopt_create(); 
             FILE *fp = fopen("../calibration/mask_rect.txt","r");
             fscanf(fp,"%f %f %f %f\n",&corner_coords[0].x,&corner_coords[1].x,&corner_coords[0].y,&corner_coords[1].y);
+            printf("coord: %f %f %f %f\n",corner_coords[0].x,corner_coords[1].x,corner_coords[0].y,corner_coords[1].y);
             red_hsv.read_hsv_from_file("../calibration/red_hsv_range.txt");
             green_hsv.read_hsv_from_file("../calibration/green_hsv_range.txt");
         }
@@ -173,6 +174,7 @@ class state_t
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->vxworld,"image");
                 image_u32_t *im; 
+                std::vector<int> center_list;
                 if(state->usePic){
                     im = image_u32_create_from_pnm(state->pic_url); 
                 }
@@ -189,7 +191,7 @@ class state_t
                     isrc->release_frame(isrc,frmd);
                 }
                 if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
-                    state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv,state->green_hsv);
+                    center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv,state->green_hsv);
                 } 
                 if(im != NULL){
                     vx_object_t *vim = vxo_image_from_u32(im,
