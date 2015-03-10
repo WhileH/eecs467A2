@@ -4,6 +4,7 @@
 #include <climits>
 #include <cfloat>
 #include <deque>
+#define BLACK 0xff000000
 void image_processor::image_masking(image_u32_t *im,float x1,float x2,float y1, float y2){
     uint32_t black = 0xff000000;
     for (int y = 0; y < im->height; ++y) {
@@ -15,14 +16,11 @@ void image_processor::image_masking(image_u32_t *im,float x1,float x2,float y1, 
     }  
 }
 
-std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float x2,float y1,float y2,max_min_hsv red,max_min_hsv green){
+std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float x2,float y1,float y2,max_min_hsv color){
     uint32_t black = 0xff000000;
     hsv_color_t tmp_hsv;
-    hsv_color_t max_red_hsv = red.get_max_HSV();
-    hsv_color_t min_red_hsv = red.get_min_HSV();
-    hsv_color_t max_green_hsv = green.get_max_HSV();
-    hsv_color_t min_green_hsv = green.get_min_HSV();
-    image_masking(im,x1,x2,y1,y2);
+    hsv_color_t max_hsv = color.get_max_HSV();
+    hsv_color_t min_hsv = color.get_min_HSV();
     int real_y1 = (int)(im->height - y2);
     int real_y2 = (int)(im->height - y1);
     int real_height = real_y2-real_y1+1;
@@ -36,13 +34,10 @@ std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float
     for(int y = real_y1;y<=real_y2;++y){
         for(int x = (int)x1;x<=(int)x2;++x){
             tmp_hsv = rgb_to_hsv(im->buf[y*im->stride + x]);    
-            if(is_hsv_in_range(tmp_hsv,max_red_hsv,min_red_hsv) || is_hsv_in_range(tmp_hsv,max_green_hsv,min_green_hsv)){
+            if(is_hsv_in_range(tmp_hsv,max_hsv,min_hsv)){
                 not_black_pos.push_back(y*im->width+x);
                 //not grouped
                 im_section[y*im->width+x] = 1;
-            }
-            else{
-                im->buf[y*im->stride + x] = black;
             }
         }
     }
@@ -103,15 +98,7 @@ std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float
     }
     //delete small region and find the center of big region
     for(auto it = section_list.begin();it!=section_list.end();++it){
-        if(it->size()<20){
-            //size too small
-            for(auto i = it->begin();i!=it->end();++i){
-                int point_y = (*i)/im->width;
-                int point_x = (*i)%im->width;
-                im->buf[point_y*im->stride+point_x] = black;
-            }
-        }
-        else{
+        if(it->size()>50){
             //this is a blob
             int y_max = INT_MIN;
             int y_min = INT_MAX;
@@ -137,24 +124,26 @@ std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float
             int center_x = (x_max+x_min)/2;
             int center_y = (y_max+y_min)/2;
             int center_pos = center_y*im->width + center_x;
-            uint32_t center_color = im->buf[center_y*im->stride + center_x];
             center_list.push_back(center_pos);
-            //color the region
-            for(int y = y_min;y<=y_max;++y){
-                for(int x = x_min;x<=x_max;++x){
-                    int dis = (x-center_x)*(x-center_x)+(y-center_y)*(y-center_y);
-                    if(dis <= (radius*radius)){
-                       im->buf[y*im->stride+x] = center_color; 
-                    }
-                    else{
-                       im->buf[y*im->stride+x] = black; 
-                    }
-                }
-            }
-            im->buf[center_y*im->stride + center_x] = 0xffff73df;
         }
     }
     return center_list;
+}
+
+void image_processor::draw_circle(image_u32_t *im,int center_x,int center_y, float radius,uint32_t color){
+    float radius_2 = radius*radius;
+    int y_min = center_y - radius;
+    int y_max = center_y + radius;
+    int x_min = center_x - radius;
+    int x_max = center_x + radius;
+    for(int y=y_min;y<=y_max;++y){
+		for(int x=x_min;x<=x_max;++x){
+		    int dis = (x-center_x)*(x-center_x) + (y-center_y)*(y-center_y);
+			if(dis <= (radius_2)){
+				im->buf[y*im->stride+x] = color;
+			}	
+		}
+	}
 }
 
 void image_processor::image_select(image_u32_t *im,max_min_hsv hsv){

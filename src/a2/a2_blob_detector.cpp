@@ -174,7 +174,8 @@ class state_t
                 pthread_mutex_lock(&state->data_mutex);
                 vx_buffer_t *buf = vx_world_get_buffer(state->vxworld,"image");
                 image_u32_t *im; 
-                std::vector<int> center_list;
+                std::vector<int> red_center_list;
+		std::vector<int> green_center_list;
                 if(state->usePic){
                     im = image_u32_create_from_pnm(state->pic_url); 
                 }
@@ -191,8 +192,25 @@ class state_t
                     isrc->release_frame(isrc,frmd);
                 }
                 if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
-                    center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv,state->green_hsv);
-                } 
+		    state->im_processor.image_masking(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y);
+                    red_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv);
+		    green_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->green_hsv); 
+		    //printf("%d %d\n",red_center_list.size(),green_center_list.size());
+		} 
+		if(!red_center_list.empty()){
+		    for(int i=0;i<red_center_list.size();++i){
+			int y = red_center_list[i]/im->width;
+			int x = red_center_list[i]%im->width;
+			state->im_processor.draw_circle(im,x,y,10.0,0xff0000ff);
+		    }
+		}
+		if(!green_center_list.empty()){
+		    for(int i=0;i<green_center_list.size();++i){
+			int y = green_center_list[i]/im->width;
+			int x = green_center_list[i]%im->width;
+			state->im_processor.draw_circle(im,x,y,10.0,0xff00ff00);
+		    }
+		}
                 if(im != NULL){
                     vx_object_t *vim = vxo_image_from_u32(im,
                             VXO_IMAGE_FLIPY,
