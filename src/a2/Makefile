@@ -38,9 +38,10 @@ BIN_A2_COLOR_PICKER = $(BIN_PATH)/a2_color_picker
 BIN_A2_BLOB_DETECTOR = $(BIN_PATH)/a2_blob_detector
 BIN_A2_AI = $(BIN_PATH)/a2_ai
 BIN_A2_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
+#BIN_A2_INTEL = $(BIN_PATH)/a2_intel
 
 ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR) \
-	 $(BIN_A2_INVERSE_KINEMATICS) #$(BIN_A2_AI)
+	 $(BIN_A2_INVERSE_KINEMATICS) #$(BIN_A2_INTEL)
 
 all: $(ALL)
 
@@ -60,13 +61,13 @@ $(BIN_A2_BLOB_DETECTOR): a2_blob_detector.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-#$(BIN_A2_AI): a2_ai.o $(LIB_A2) $(LIBDEPS)
-#	@echo "\t$@"
-#	@$(CXX) -o $@ $^ $(LDFLAGS)
-
 $(BIN_A2_INVERSE_KINEMATICS): a2_inv_kin.o a2_inverse_kinematics.o $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+#$(BIN_A2_INTEL): a2_ai.o board_state.o a2_intel.o $(LIBDEPS)
+	#@echo "\t$@"
+	#@$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -f *.o *~ *.a
