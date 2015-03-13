@@ -41,6 +41,7 @@ class state_t
         bool                usePic;
         char                *pic_url;
         char                *camera_url;
+        char                *filename;
         image_processor     im_processor;
         vx_application_t    vxapp;
         vx_world_t          *vxworld;
@@ -207,7 +208,7 @@ class state_t
                     x2 += im->width/2;
                     y1 += im->height/2;
                     y2 += im->height/2;
-                    FILE *fp = fopen("mask_rect.txt","w");
+                    FILE *fp = fopen(state->filename,"w");
                     fprintf(fp,"%f %f %f %f\n",x1,x2,y1,y2);
                     fclose(fp);
                     state->im_processor.image_masking(im,x1,x2,y1,y2);
@@ -273,11 +274,23 @@ int main(int argc, char ** argv)
     printf("init state\n");
     //find camera urls and use the first one
     getopt_add_string (state.gopt, 'f', "picurl", "", "Picture URL");
+    getopt_add_string (state.gopt, 'o', "filename","","File URL");
 
     if (!getopt_parse (state.gopt, argc, argv, 1)) {
         printf ("Usage: %s [--url=CAMERAURL] [other options]\n\n", argv[0]);
         getopt_do_usage (state.gopt);
         exit (EXIT_FAILURE);
+    }
+
+    if(!strncmp (getopt_get_string (state.gopt, "filename"),"",1)){
+        printf("no file name found\n");
+        exit (EXIT_FAILURE);
+    }
+    else{
+        char str[100] = "../calibration/";
+        char *fn = strdup(getopt_get_string (state.gopt, "filename"));
+        state.filename = strncat(str,fn,15);
+        //state.filename = fn;
     }
 
     if (strncmp (getopt_get_string (state.gopt, "picurl"), "", 1)) {

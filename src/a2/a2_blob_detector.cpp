@@ -192,21 +192,21 @@ class state_t
                     isrc->release_frame(isrc,frmd);
                 }
                 if(state->corner_coords[0].x != -1 && state->corner_coords[0].y != -1 && state->corner_coords[1].x != -1 && state->corner_coords[1].y != -1){  
-		    state->im_processor.image_masking(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y);
+		            state->im_processor.image_masking(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y);
                     red_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv);
-		    green_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->green_hsv); 
+		            green_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->green_hsv); 
 		    //printf("%d %d\n",red_center_list.size(),green_center_list.size());
 		} 
 		if(!red_center_list.empty()){
 		    for(int i=0;i<red_center_list.size();++i){
-			int y = red_center_list[i]/im->width;
-			int x = red_center_list[i]%im->width;
-			state->im_processor.draw_circle(im,x,y,10.0,0xff0000ff);
+			    int y = (im->height - red_center_list[i])/im->width;
+			    int x = (red_center_list[i])%im->width;
+			    state->im_processor.draw_circle(im,x,y,10.0,0xff0000ff);
 		    }
 		}
 		if(!green_center_list.empty()){
 		    for(int i=0;i<green_center_list.size();++i){
-			int y = green_center_list[i]/im->width;
+			int y = (im->height - green_center_list[i])/im->width;
 			int x = green_center_list[i]%im->width;
 			state->im_processor.draw_circle(im,x,y,10.0,0xff00ff00);
 		    }
