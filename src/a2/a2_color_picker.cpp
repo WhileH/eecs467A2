@@ -138,6 +138,7 @@ class state_t
                     hsv_color_t max_hsv = hsv_tmp.get_max_HSV();
                     hsv_color_t min_hsv = hsv_tmp.get_min_HSV();
                     fprintf(fp,"%f %f %f %f %f %f\n",min_hsv.H,max_hsv.H,min_hsv.S,max_hsv.S,min_hsv.V,max_hsv.V);
+		    printf("[%f %f %f %f %f %f]\n",min_hsv.H,max_hsv.H,min_hsv.S,max_hsv.S,min_hsv.V,max_hsv.V);
                     fclose(fp);
                 }
                 else if(key->key_code == VX_KEY_DEL){

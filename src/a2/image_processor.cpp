@@ -123,7 +123,6 @@ std::vector<int> image_processor::blob_detection(image_u32_t *im, float x1,float
             float radius = ((x_max-x_min+1)+(y_max-y_min+1))/4.0;
             int center_x = (x_max+x_min)/2;
             int center_y = (y_max+y_min)/2;
-            center_y = im->height - center_y;
             int center_pos = center_y*im->width + center_x;
             center_list.push_back(center_pos);
         }

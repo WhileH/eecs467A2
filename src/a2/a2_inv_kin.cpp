@@ -8,7 +8,7 @@ inv_kinematics::inv_kinematics()
   cmds.commands = (dynamixel_command_t*) calloc(NUM_SERVOS, sizeof(dynamixel_command_t));
   lcm = lcm_create(NULL);
   
-  /*
+  
   for (int id = 0; id < NUM_SERVOS; id++) {
     cmds.commands[id].utime = utime_now ();
     if(id == 5){
@@ -18,11 +18,8 @@ inv_kinematics::inv_kinematics()
     else{
       cmds.commands[id].max_torque = 0.5;
       cmds.commands[id].speed = 0.075;
-    }
-    
-    dynamixel_command_list_t_publish (lcm, command_channel, &cmds);
+    }    
   }
-  */
 }
 
 
@@ -73,10 +70,18 @@ void inv_kinematics::move_2_pos(double x, double y)
   angles[2] = M_PI - gamma;
   angles[3] = M_PI - angles[1] - angles[2];
   angles[4] = 0;
-  cout << "base: " << angles[0] << endl;
-  cout << "shoulder: " << angles[1] << endl;
-  cout << "elbow: " << angles[2] << endl;
-  cout << "wrist: " << angles[3] << endl;
+  
+  if(sqrt(R_squared) > (d2 + d3)){
+    double d = sqrt(R_squared) - (d2 + d3);
+    double a = fasin(d / d4);
+    angles[3] -= a;
+  }
+
+  
+  //cout << "base: " << angles[0] << endl;
+  //cout << "shoulder: " << angles[1] << endl;
+  //cout << "elbow: " << angles[2] << endl;
+  //cout << "wrist: " << angles[3] << endl;
 
   int servo_order[5] = {0, 4, 3, 2, 1};
   for(auto i : servo_order){
@@ -98,7 +103,7 @@ void inv_kinematics::go_home()
     cmds.commands[i].utime = utime_now();
     cmds.commands[i].position_radians = angles[i];
     dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
-    usleep(300000);
+    usleep(750000);
   }
   return;
 }
@@ -107,6 +112,7 @@ void inv_kinematics::pick_up(double x, double y)
 {
   move_2_pos(x, y);
   cmds.commands[5].position_radians = FINGERS_CLOSE;
+  dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
   usleep(2500000);
   go_home();
   return;

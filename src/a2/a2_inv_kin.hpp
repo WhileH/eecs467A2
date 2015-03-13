@@ -35,7 +35,7 @@ const double d2 = 0.10;
 const double d3 = 0.10;
 const double d4 = 0.115;
 
-const double h = 0.08;
+const double h = 0.1;
 
 const double FINGERS_CLOSE = 1.55;
 const double FINGERS_OPEN = 0;
