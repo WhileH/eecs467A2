@@ -289,7 +289,7 @@ int main(int argc, char ** argv)
     else{
         char str[100] = "../calibration/";
         char *fn = strdup(getopt_get_string (state.gopt, "filename"));
-        state.filename = strcat(str,fn);
+        state.filename = strncat(str,fn,15);
         //state.filename = fn;
     }
 
