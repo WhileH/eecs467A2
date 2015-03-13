@@ -44,6 +44,7 @@ class state_t
         int                 im_height;
         int                 im_width;
         char                *camera_url;
+        char                *filename;
         image_processor     im_processor;
         std::deque<max_min_hsv> hsv_ranges;
         std::deque<uint32_t> color_selected;
@@ -132,7 +133,7 @@ class state_t
             if(!key->released){
                 if(key->key_code == 'S' || key->key_code == 's'){
                     //save hsv
-                    FILE *fp = fopen("hsv_range.txt","w");
+                    FILE *fp = fopen(state->filename,"w");
                     max_min_hsv hsv_tmp = state->hsv_ranges.back();
                     hsv_color_t max_hsv = hsv_tmp.get_max_HSV();
                     hsv_color_t min_hsv = hsv_tmp.get_min_HSV();
@@ -278,13 +279,22 @@ int main(int argc, char ** argv)
     printf("init state\n");
     //find camera urls and use the first one
     getopt_add_string (state.gopt, 'f', "picurl", "", "Picture URL");
-
+    getopt_add_string (state.gopt, 'o', "filename","","File URL");
     if (!getopt_parse (state.gopt, argc, argv, 1)) {
         printf ("Usage: %s [--url=CAMERAURL] [other options]\n\n", argv[0]);
         getopt_do_usage (state.gopt);
         exit (EXIT_FAILURE);
     }
-
+    if(!strncmp (getopt_get_string (state.gopt, "filename"),"",1)){
+        printf("no file name found\n");
+        exit (EXIT_FAILURE);
+    }
+    else{
+        char str[100] = "../calibration/";
+        char *fn = strdup(getopt_get_string (state.gopt, "filename"));
+        state.filename = strcat(str,fn);
+        //state.filename = fn;
+    }
     if (strncmp (getopt_get_string (state.gopt, "picurl"), "", 1)) {
         state.pic_url = strdup (getopt_get_string (state.gopt, "picurl"));
         state.usePic = true;
