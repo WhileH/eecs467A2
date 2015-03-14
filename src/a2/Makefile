@@ -29,7 +29,7 @@ LDFLAGS  = $(LDFLAGS_STD) \
 #LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 LIB_A2 = $(LIB_PATH)/liba2.a
-LIB_A2_OBJ = hsv.o image_processor.o a2_inv_kin.o #board_state.o
+LIB_A2_OBJ = hsv.o image_processor.o a2_inv_kin.o arm_ai.o gameboard.o#board_state.o
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 
@@ -39,10 +39,10 @@ BIN_A2_BLOB_DETECTOR = $(BIN_PATH)/a2_blob_detector
 BIN_A2_AI = $(BIN_PATH)/a2_ai
 BIN_A2_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
 BIN_A2_IMAGE_TO_ARM_COORD = $(BIN_PATH)/a2_image_to_arm_coord
-#BIN_A2_AI = $(BIN_PATH)/a2_ai
+BIN_A2_AI_TEST = $(BIN_PATH)/a2_ai_test
 
 ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR) \
-	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) #$(BIN_A2_AI)
+	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) $(BIN_A2_AI_TEST)
 
 all: $(ALL)
 
@@ -71,6 +71,10 @@ $(BIN_A2_IMAGE_TO_ARM_COORD): hsv.o image_processor.o a2_image_to_arm_coord.o $(
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(BIN_A2_AI): board_state.o a2_intel.o a2_ai.o $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_A2_AI_TEST): a2_ai_test.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
