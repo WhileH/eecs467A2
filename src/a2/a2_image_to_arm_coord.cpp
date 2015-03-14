@@ -1,5 +1,6 @@
 #include <thread>
 #include <pthread.h>
+#include <fstream>
 
 #include <gtk/gtk.h>
 #include <lcm/lcm-cpp.hpp>
@@ -16,6 +17,7 @@
 #include "imagesource/image_u32.h"
 #include "imagesource/image_util.h"
 #include "math/point.hpp"
+#include "math/matd.h"
 
 #include "hsv.hpp"
 #include "a2_inv_kin.hpp"
@@ -50,6 +52,7 @@ struct state
   //eecs467::Point<double> arm_coords_inCam;
   FILE *printfile;
   bool has_tx;
+  matd_t *tx_mat;
 
   thread status_thread;
   thread command_thread;
@@ -230,11 +233,22 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
     vx_ray3_t ray;
     vx_camera_pos_compute_ray (pos, mouse->x, mouse->y, &ray);
     double ground[3];
+    ground[2] = 1;
     vx_ray3_intersect_xy(&ray, 0, ground);
     printf ("Mouse clicked at coords: [%8.3f, %8.3f] Ground clicked at coords: [%6.3f, %6.3f]\n",
 	    mouse->x, mouse->y, ground[0], ground[1]);
     state.click_point.x = ground[0];
     state.click_point.y = ground[1];
+    if(state.has_tx){
+      ground[0] = (state.im->width + ground[0]);
+      ground[1] = (state.im->height + ground[1]);
+      ground[2] = 1;
+      double ground_in_arm[3];
+      ground_in_arm[0] = matd_get(state.tx_mat, 0, 0)*ground[0] + matd_get(state.tx_mat, 0, 1)*ground[1] + matd_get(state.tx_mat, 0, 2)*ground[2];
+      ground_in_arm[1] = matd_get(state.tx_mat, 1, 0)*ground[0] + matd_get(state.tx_mat, 1, 1)*ground[1] + matd_get(state.tx_mat, 1, 2)*ground[2];
+      ground_in_arm[2] = matd_get(state.tx_mat, 2, 0)*ground[0] + matd_get(state.tx_mat, 2, 1)*ground[1] + matd_get(state.tx_mat, 2, 2)*ground[2];
+      printf("Mouse click in arm coords: (%f, %f, %f)\n", ground_in_arm[0], ground_in_arm[1], ground_in_arm[2]);
+    }
   }
   state.last_mouse_event = *mouse;
   pthread_mutex_unlock(&state.data_mutex);
@@ -244,19 +258,27 @@ static int key_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *k
   pthread_mutex_lock(&state.data_mutex);
   if(!key->released){
     if(key->key_code == VX_KEY_SPACE){
+      /*
+       *
+       * This uses click position. If causes problems, use nearest cyan centroid
+       *
+       */
       fprintf(state.printfile, "%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
       printf("%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
     }
     if(key->key_code == 'c'){
       cout << "Closing file. Don't try to write any more" << endl;
       fclose(state.printfile);
-      state.printfile = fopen("../calibration/arm_mappings.txt","r");
+      //state.printfile = fopen("../calibration/arm_mappings.txt","r");
+      ifstream f1("../calibration/arm_mappings.txt");
       double a_data[36];
       double b_data[6];
       //cout << "File opened again" << endl;
       for(int i=0; i<3; ++i){
 	//state.printfile >> a_data[i*12 +0] >> a_data[i*12 + 1];
-	fscanf(state.printfile, "%f %f %f %f", &a_data[i*12 +0], &a_data[i*12 +1], &b_data[i*2 +0], &b_data[i*2 +1]);
+	//fscanf(state.printfile, "%f %f %f %f\n", &a_data[i*12 +0], &a_data[i*12 +1], &b_data[i*2 +0], &b_data[i*2 +1]);
+	f1 >> a_data[i*12 +0] >> a_data[i*12 +1] >> b_data[i*2 +0] >> b_data[i*2 +1];
+	cout << a_data[i*12 +0] << ' ' <<  a_data[i*12 +1] << ' ' << b_data[i*2 +0] << ' ' << b_data[i*2 +1] << endl;
 	//cout << "File scanned: " << i << endl;
 	a_data[i*12 +2] = 1;
 	a_data[i*12 +3] = 0;
@@ -282,9 +304,19 @@ static int key_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *k
       gsl_vector_fprintf(fp, x, "%g");
       gsl_vector_fprintf(stdout, x, "%g");
       state.has_tx = true;
+      state.tx_mat = matd_create(3, 3);
+      matd_put(state.tx_mat, 0, 0, gsl_vector_get(x, 0));
+      matd_put(state.tx_mat, 0, 1, gsl_vector_get(x, 1));
+      matd_put(state.tx_mat, 0, 2, gsl_vector_get(x, 2));
+      matd_put(state.tx_mat, 1, 0, gsl_vector_get(x, 3));
+      matd_put(state.tx_mat, 1, 1, gsl_vector_get(x, 4));
+      matd_put(state.tx_mat, 1, 2, gsl_vector_get(x, 5));
+      matd_put(state.tx_mat, 2, 0, 0);
+      matd_put(state.tx_mat, 2, 1, 0);
+      matd_put(state.tx_mat, 2, 2, 1.0);
       gsl_permutation_free(p);
       gsl_vector_free(x);
-      fclose(state.printfile);
+      //fclose(state.printfile);
       fclose(fp);
     }
   }
@@ -302,6 +334,7 @@ static void display_finished(vx_application_t *app, vx_display_t *disp){
   zhash_remove(state.layers, &disp, NULL, &layer);
   vx_layer_destroy(layer);
   image_u32_destroy (state.im);
+  matd_destroy(state.tx_mat);
   pthread_mutex_unlock(&state.mutex);
 }
 
