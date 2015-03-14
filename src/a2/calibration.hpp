@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include "hsv.hpp"
-#include "math/Point.hpp"
+#include "math/point.hpp"
 
 class calibration_t{
 private:
