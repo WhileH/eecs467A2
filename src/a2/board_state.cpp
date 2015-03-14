@@ -1,12 +1,6 @@
 #include "board_state.hpp"
 
-BoardState::BoardState() {	
-	//create board		
-	std::vector <char> row (3,'.');
-		
-	for (unsigned int i; i < 3; i++)
-	board.push_back(row);	
-}
+BoardState::BoardState() {	}
 		
 void determineStateofBoard(std::vector <int>& greenBalls, std::vector 
 				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth) {

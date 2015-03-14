@@ -18,7 +18,8 @@ public:
 
 	BoardState();
 	
-	std::vector <std::vector <char> > board; //tic tac toe baord
+	std::vector <std::vector <char> > std::vector < vector <char> >(3, vector <char> 
+		(3,'.'); //tic tac toe baord
 	std::vector < eecs467::Point<int> > availBalls; //out of play balls
 
 	/*
