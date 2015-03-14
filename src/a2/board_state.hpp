@@ -10,13 +10,13 @@
 #include "game_constants.hpp"
 #include "calibration.hpp"
 
+#include <cmath>
+#include "math/math_util.h"
 #include "math/point.hpp"
 
 class BoardState {
 	
 private:
-
-	calibration_t cali;
 	
 	std::vector < eecs467::Point <int> > availBalls; 
 
@@ -29,12 +29,14 @@ public:
 	and determines the state of the board	
 	*/	
 	std::vector <char> determineStateofBoard(std::vector <int>& greenBalls, std::vector 
-				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth);	
+				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int 					imgHeight,calibration_t &cali);	
 
 	// returns num of balls left to place
 	int ballsLeft();
-
+	
 	eecs467::Point <int> nextFreeBall();
+
+	eecs467::Point<int> convert(int x, int y);
 	
 };
 
