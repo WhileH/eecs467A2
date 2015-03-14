@@ -39,10 +39,10 @@ BIN_A2_BLOB_DETECTOR = $(BIN_PATH)/a2_blob_detector
 BIN_A2_AI = $(BIN_PATH)/a2_ai
 BIN_A2_INVERSE_KINEMATICS = $(BIN_PATH)/a2_inverse_kinematics
 BIN_A2_IMAGE_TO_ARM_COORD = $(BIN_PATH)/a2_image_to_arm_coord
-#BIN_A2_INTEL = $(BIN_PATH)/a2_intel
+#BIN_A2_AI = $(BIN_PATH)/a2_ai
 
 ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR) \
-	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) #$(BIN_A2_INTEL)
+	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) #$(BIN_A2_AI)
 
 all: $(ALL)
 
@@ -70,7 +70,7 @@ $(BIN_A2_IMAGE_TO_ARM_COORD): hsv.o image_processor.o a2_image_to_arm_coord.o $(
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_A2_INTEL): board_state.o a2_ai.o a2_intel.o $(LIBDEPS)
+$(BIN_A2_AI): board_state.o a2_intel.o a2_ai.o $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
