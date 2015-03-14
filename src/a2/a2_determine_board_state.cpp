@@ -85,6 +85,7 @@ class state_t
 			running = 1;
 			usePic = false;
 			gopt = getopt_create(); 
+			cal.read_tx_mat("../calibration/transform_elements.txt");
 		}
 
 		~state_t()
@@ -101,6 +102,7 @@ class state_t
 
 		void init_thread()
 		{
+		
 			pthread_create(&animate_thread,NULL,&state_t::render_loop,this);
 		}
 
@@ -150,6 +152,7 @@ class state_t
 		}
 		static void* render_loop(void* data)
 		{
+			usleep(1000000);
 			state_t * state = (state_t*) data;
 			int fps = 60;
 			image_source_t *isrc = NULL;
@@ -219,11 +222,19 @@ class state_t
 						state->im_processor.draw_circle(im, x, y, 20.0, 0xffffff00);
 					}
 				}
+				
 				state->game_board.update_entire_board(
 						state->board_state.determineStateofBoard(
 						green_center_list,red_center_list,cyan_center_list,
 						im->width,im->height,state->cal));
+
 				state->game_board.print_board();
+
+				if (state->board_state.ballsLeft()){
+					eecs467::Point<double> point = state->board_state.nextFreeBall();
+					std::cout << "outoplay" << point.x << "," << point.y << std::endl;
+				}
+
 				if(im != NULL){
 					vx_object_t *vim = vxo_image_from_u32(im,
 							VXO_IMAGE_FLIPY,
@@ -319,9 +330,9 @@ int main(int argc, char ** argv)
 	}
 	state.init_thread();
 	//vx
+	gtk_init(&argc, &argv);
 	gdk_threads_init();
 	gdk_threads_enter();
-	gtk_init(&argc, &argv);
 
 	state.appwrap = vx_gtk_display_source_create(&state.vxapp);
 	GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
