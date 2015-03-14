@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include <lcm/lcm-cpp.hpp>
+#include <gsl/gsl_linalg.h>
 
 #include "vx/vx.h"
 #include "vx/vx_util.h"
@@ -43,6 +44,12 @@ struct state
 
   max_min_hsv cyan_hsv;  
   eecs467::Point<float> corner_coords[2];
+  eecs467::Point<float> click_point;
+  eecs467::Point<double> arm_coords;
+  image_u32_t *im; 
+  //eecs467::Point<double> arm_coords_inCam;
+  FILE *printfile;
+  bool has_tx;
 
   thread status_thread;
   thread command_thread;
@@ -58,6 +65,26 @@ static void status_handler(const lcm_recv_buf_t *rbuf,
 			   const dynamixel_status_list_t *msg,
 			   void *user){
   //do stuff
+  vector<double> angles(msg->len);
+  for(int i=0; i<msg->len; ++i){
+    angles[i] = msg->statuses[i].position_radians;
+    //printf("[id%d]=%6.3f ", i, msg->statuses[i].position_radians);
+  }
+  //cout << endl;
+  double R, r1, r2, r3;
+  r1 = d2 * fsin(angles[1]);
+  r2 = d3 * fcos(angles[2] - ((M_PI/2.0) - angles[1]));
+  r3 = (d4 + 0.065) * fcos(angles[3] + (angles[2] - ((M_PI/2.0) - angles[1])));
+  R = r1 + r2 + r3;
+  double theta = angles[0];
+  //cout << "R: " << R << " theta: " << theta << endl;
+  double x = R * fcos(theta);
+  double y = R * fsin(theta);
+  //cout << "X: " << x << " Y: " << y << endl;
+  pthread_mutex_lock(&state.data_mutex);
+  state.arm_coords.x = x;
+  state.arm_coords.y = y;
+  pthread_mutex_unlock(&state.data_mutex);
 }
 
 void status_loop(){
@@ -100,55 +127,104 @@ void render_loop(){
     else
       isrc->start(isrc);
   }
+  pthread_mutex_lock(&state.data_mutex);
+  vx_buffer_t *buf = vx_world_get_buffer(state.vxworld,"image");
+  std::vector<int> cyan_center_list;
+  if(state.usePic){
+    state.im = image_u32_create_from_pnm(state.pic_url); 
+  }
+  else if(isrc != NULL){
+    image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
+    int res = isrc->get_frame(isrc,frmd);
+    if(res < 0){
+      printf("get_frame fail\n");
+    }
+    else{
+      state.im = image_convert_u32(frmd);
+    }
+    fflush(stdout);
+    isrc->release_frame(isrc,frmd);
+  }
+  if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
+    state.im_proc.image_masking(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
+    cyan_center_list = state.im_proc.blob_detection(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
+  }
+  if(!cyan_center_list.empty()){
+    for(int i=0; i<cyan_center_list.size(); ++i){
+      int y = (cyan_center_list[i]) / state.im->width;
+      int x = (cyan_center_list[i]) % state.im->width;
+      state.im_proc.draw_circle(state.im, x, y, 20.0, 0xffffff00);
+      cout << "Centroid[" << i << "]: (" << x << ", " << y << ")" << endl;
+    }
+  }
+    
+  if(state.im != NULL){
+    vx_object_t *vim = vxo_image_from_u32(state.im,
+					  VXO_IMAGE_FLIPY,
+					  VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+    //use pix coords to make a fix image
+    vx_buffer_add_back (buf,vxo_chain (
+				       vxo_mat_translate3 (-state.im->width/2., -state.im->height/2., 0.),
+				       vim));
+      
+      
+      
+  }
+  image_u32_destroy(state.im);
+  pthread_mutex_unlock(&state.data_mutex);
+  vx_buffer_swap(buf);
+  usleep(1000000/fps);
+
   while(1){
     pthread_mutex_lock(&state.data_mutex);
-    vx_buffer_t *buf = vx_world_get_buffer(state.vxworld,"image");
-    image_u32_t *im; 
-    std::vector<int> cyan_center_list;
-    if(state.usePic){
-      im = image_u32_create_from_pnm(state.pic_url); 
-    }
-    else if(isrc != NULL){
-      image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
-      int res = isrc->get_frame(isrc,frmd);
-      if(res < 0){
-	printf("get_frame fail\n");
+    if(state.has_tx){
+      if(isrc != NULL){
+	image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
+	int res = isrc->get_frame(isrc,frmd);
+	if(res < 0){
+	  printf("get_frame fail\n");
+	}
+	else{
+	  state.im = image_convert_u32(frmd);
+	}
+	fflush(stdout);
+	isrc->release_frame(isrc,frmd);
       }
-      else{
-	im = image_convert_u32(frmd);
+      if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
+	state.im_proc.image_masking(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
+	cyan_center_list = state.im_proc.blob_detection(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
       }
-      fflush(stdout);
-      isrc->release_frame(isrc,frmd);
-    }
-    if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
-      state.im_proc.image_masking(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
-      cyan_center_list = state.im_proc.blob_detection(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
-    }
-    if(!cyan_center_list.empty()){
-      for(int i=0; i<cyan_center_list.size(); ++i){
-	int y = (cyan_center_list[i]) / im->width;
-	int x = (cyan_center_list[i]) % im->width;
-	state.im_proc.draw_circle(im, x, y, 20.0, 0xffffff00);
+      if(!cyan_center_list.empty()){
+	for(int i=0; i<cyan_center_list.size(); ++i){
+	  int y = (cyan_center_list[i]) / state.im->width;
+	  int x = (cyan_center_list[i]) % state.im->width;
+	  state.im_proc.draw_circle(state.im, x, y, 20.0, 0xffffff00);
+	  //cout << "Centroid[" << i << "]: (" << x << ", " << y << ")" << endl;
+	}
       }
-    }
-    if(im != NULL){
-      vx_object_t *vim = vxo_image_from_u32(im,
-					    VXO_IMAGE_FLIPY,
-					    VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
-      //use pix coords to make a fix image
-      vx_buffer_add_back (buf,vxo_chain (
-					 vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
-					 vim));
-      image_u32_destroy (im);
+    
+      if(state.im != NULL){
+	vx_object_t *vim = vxo_image_from_u32(state.im,
+					      VXO_IMAGE_FLIPY,
+					      VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
+	//use pix coords to make a fix image
+	vx_buffer_add_back (buf,vxo_chain (
+					   vxo_mat_translate3 (-state.im->width/2., -state.im->height/2., 0.),
+					   vim));
       
+      
+      
+      }
+      vx_buffer_swap(buf);
+      usleep(1000000/fps);
+      image_u32_destroy(state.im);
     }
     pthread_mutex_unlock(&state.data_mutex);
-    vx_buffer_swap(buf);
-    usleep(1000000/fps);
   }
 }
 
 static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t *pos, vx_mouse_event_t *mouse){
+
   pthread_mutex_lock(&state.data_mutex);
   if((mouse->button_mask & VX_BUTTON1_MASK) && !(state.last_mouse_event.button_mask & VX_BUTTON1_MASK)){
     vx_ray3_t ray;
@@ -157,12 +233,62 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
     vx_ray3_intersect_xy(&ray, 0, ground);
     printf ("Mouse clicked at coords: [%8.3f, %8.3f] Ground clicked at coords: [%6.3f, %6.3f]\n",
 	    mouse->x, mouse->y, ground[0], ground[1]);
+    state.click_point.x = ground[0];
+    state.click_point.y = ground[1];
   }
   state.last_mouse_event = *mouse;
   pthread_mutex_unlock(&state.data_mutex);
 }
 
 static int key_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *key){
+  pthread_mutex_lock(&state.data_mutex);
+  if(!key->released){
+    if(key->key_code == VX_KEY_SPACE){
+      fprintf(state.printfile, "%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
+      printf("%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
+    }
+    if(key->key_code == 'c'){
+      cout << "Closing file. Don't try to write any more" << endl;
+      fclose(state.printfile);
+      state.printfile = fopen("../calibration/arm_mappings.txt","r");
+      double a_data[36];
+      double b_data[6];
+      //cout << "File opened again" << endl;
+      for(int i=0; i<3; ++i){
+	//state.printfile >> a_data[i*12 +0] >> a_data[i*12 + 1];
+	fscanf(state.printfile, "%f %f %f %f", &a_data[i*12 +0], &a_data[i*12 +1], &b_data[i*2 +0], &b_data[i*2 +1]);
+	//cout << "File scanned: " << i << endl;
+	a_data[i*12 +2] = 1;
+	a_data[i*12 +3] = 0;
+	a_data[i*12 +4] = 0;
+	a_data[i*12 +5] = 0;
+	a_data[i*12 +6] = 0;
+	a_data[i*12 +7] = 0;
+	a_data[i*12 +8] = 0;
+	a_data[i*12 +9] = a_data[i*12 +0];
+	a_data[i*12 +10] = a_data[i*12 +1];
+	a_data[i*12 +11] = 1;
+	//state.printfile >> b_data[i*2 +0] >> b_data[i*2+1];
+      }
+      gsl_matrix_view m = gsl_matrix_view_array(a_data, 6, 6);
+      gsl_vector_view b = gsl_vector_view_array(b_data, 6);
+      gsl_vector *x = gsl_vector_alloc(6);
+      int s;
+      gsl_permutation *p = gsl_permutation_alloc(6);
+      gsl_linalg_LU_decomp(&m.matrix, p, &s);
+      gsl_linalg_LU_solve(&m.matrix, p, &b.vector, x);
+      printf("x = \n");
+      FILE *fp = fopen("../calibration/transform_elements.txt","w");
+      gsl_vector_fprintf(fp, x, "%g");
+      gsl_vector_fprintf(stdout, x, "%g");
+      state.has_tx = true;
+      gsl_permutation_free(p);
+      gsl_vector_free(x);
+      fclose(state.printfile);
+      fclose(fp);
+    }
+  }
+  pthread_mutex_unlock(&state.data_mutex);
   return 0;
 }
 
@@ -175,12 +301,16 @@ static void display_finished(vx_application_t *app, vx_display_t *disp){
   vx_layer_t *layer = NULL;
   zhash_remove(state.layers, &disp, NULL, &layer);
   vx_layer_destroy(layer);
+  image_u32_destroy (state.im);
   pthread_mutex_unlock(&state.mutex);
 }
 
 static void display_started(vx_application_t *app, vx_display_t *disp){
   vx_layer_t *layer = vx_layer_create(state.vxworld);
   vx_layer_set_display(layer, disp);
+  if(state.vxeh != NULL){
+    vx_layer_add_event_handler(layer,state.vxeh);
+  }
   pthread_mutex_lock(&state.mutex);
   zhash_put(state.layers, &disp, &layer, NULL, NULL);
   pthread_mutex_unlock(&state.mutex);
@@ -205,7 +335,7 @@ static void init_stuff(){
   pthread_mutex_init (&state.mutex, NULL);
   pthread_mutex_init (&state.data_mutex,NULL);
   
-  
+  state.has_tx = false;
   state.gopt = getopt_create(); 
   FILE *fp = fopen("../calibration/mask_rect.txt","r");
   fscanf(fp,"%f %f %f %f\n",&state.corner_coords[0].x,&state.corner_coords[1].x,&state.corner_coords[0].y,&state.corner_coords[1].y);
@@ -213,9 +343,12 @@ static void init_stuff(){
   //red_hsv.read_hsv_from_file("../calibration/red_hsv_range.txt");
   //green_hsv.read_hsv_from_file("../calibration/green_hsv_range.txt");
   state.cyan_hsv.read_hsv_from_file("../calibration/cyan_hsv_range.txt");
+
+  state.printfile = fopen("../calibration/arm_mappings.txt","w");
 }
 
 static void destroy_stuff(){
+  fclose(state.printfile);
   vx_world_destroy(state.vxworld);
   if(zhash_size(state.layers) != 0){
     zhash_destroy(state.layers);

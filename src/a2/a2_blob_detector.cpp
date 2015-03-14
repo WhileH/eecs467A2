@@ -199,7 +199,7 @@ class state_t
                     red_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->red_hsv);
 		            green_center_list = state->im_processor.blob_detection(im,state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->green_hsv); 
 			    cyan_center_list = state->im_processor.blob_detection(im, state->corner_coords[0].x,state->corner_coords[1].x,state->corner_coords[0].y,state->corner_coords[1].y,state->cyan_hsv); 
-			    printf("numCenters %d %d %d\n",red_center_list.size(),green_center_list.size(), cyan_center_list.size());
+			    //printf("numCenters %d %d %d\n",red_center_list.size(),green_center_list.size(), cyan_center_list.size());
 		} 
 		if(!red_center_list.empty()){
 		    for(int i=0;i<red_center_list.size();++i){
@@ -216,14 +216,10 @@ class state_t
 		    }
 		}
 		if(!cyan_center_list.empty()){
-		  printf("making cyan circles\n");
 		  for(int i=0; i < cyan_center_list.size(); ++i){
-		    printf("%d\n", i);
 		    int y = (cyan_center_list[i]) / im->width;
 		    int x = cyan_center_list[i] % im->width;
-		    printf("%d %d\n", x, y);
 		    state->im_processor.draw_circle(im, x, y, 20.0, 0xffffff00);
-		    printf("after\n");
 		  }
 		}
                 if(im != NULL){

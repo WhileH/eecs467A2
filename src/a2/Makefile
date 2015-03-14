@@ -71,9 +71,9 @@ $(BIN_A2_IMAGE_TO_ARM_COORD): hsv.o image_processor.o a2_image_to_arm_coord.o $(
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-#$(BIN_A2_INTEL): a2_ai.o board_state.o a2_intel.o $(LIBDEPS)
-	#@echo "\t$@"
-	#@$(CXX) -o $@ $^ $(LDFLAGS)
+$(BIN_A2_INTEL): a2_ai.o board_state.o a2_intel.o $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean:
 	@rm -f *.o *~ *.a
