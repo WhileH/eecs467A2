@@ -24,7 +24,7 @@ private:
 
 public:
 
-	A2AI();
+	ITNEL();
 
 	bool Win(const BoardState& boardstate, const char& playerID);
 
