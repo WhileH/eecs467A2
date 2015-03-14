@@ -31,7 +31,8 @@ public:
 	std::vector <char> determineStateofBoard(std::vector <int>& greenBalls, std::vector 
 				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth);	
 
-	bool ballsLeft();
+	// returns num of balls left to place
+	int ballsLeft();
 
 	eecs467::Point <int> nextFreeBall();
 	

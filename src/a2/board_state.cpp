@@ -2,11 +2,8 @@
 
 BoardState::BoardState() {	}
 
-bool BoardState::ballsLeft() {
-	if(availBalls.size() == 0)
-		return false;
-	else
-		return true;
+int BoardState::ballsLeft() {
+	return availBalls.size();
 }
 
 eecs467::Point <int> BoardState::nextFreeBall() {
