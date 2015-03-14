@@ -1,31 +1,67 @@
 #include "board_state.hpp"
 
 BoardState::BoardState() {	}
-		
-void determineStateofBoard(std::vector <int>& greenBalls, std::vector 
-				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth) {
+
+bool BoardState::ballsLeft() {
+	if(availBalls.size() == 0)
+		return false;
+	else
+		return true;
+}
+
+eecs467::Point <int> BoardState::nextFreeBall() {
+		eecs467::Point <int> point = availBalls[0];
+		availBalls.erase(availBalls.begin());
+		return point;
+}
+	
+std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBalls, 
+     std::vector <int>& redBalls, std::vector <int>& cyanSquares, int imgWidth) {
+	
+	//clear vectors
+	availBalls.clear();
+	
+	//initilize board
+	std::vector<char> camBoard;
+	 for(unsigned int i = 0; i < 9; i++) 
+        camBoard.push_back(' ');
+
+	//get distance between registration squares (pixels to meters)
+	eecs467::Point<double> sq1Point;
+	eecs467::Point<double> sq2Point;
 
 	std::sort(cyanSquares.begin(), cyanSquares.end());
+	
+	sq1Point.x = cyanSquares[0]%imgWidth;
+	sq1Point.y = cyanSquares[0]/imgWidth;
 
-	eecs467::Point<int> point;
-	//get distance between registration squares (pixels)
+	sq2Point.x = cyanSquares[1]%imgWidth;
+	sq2Point.y = cyanSquares[1]/imgWidth;
 
-	//convert from pixels to meters after task 4 is done
-	//what do i need to do here to get this in meters
-	//the rest of this won't work until it is in meters
-		
-	float x_o = cyanSquares[0]%imgWidth;
-	float y_o = cyanSquares[0]/imgWidth;
-	float distBetSquares = abs(cyanSquares[1]%imgWidth - cyanSquares[0]%imgWidth); 
+	std::vector <double> sq1Vec = cali.translate(sq1Point);
+	std::vector <double> sq2Vec = cali.translate(sq2Point);
 
-	//convert from meters to board coordinates
+	//parameters used to calulate board position
+	double x_o = sq1Vec[0];
+	double y_o = sq1Vec[1];
+	double distBetSquares = abs(sq1Vec[1] - sq2Vec[0]);
+
+	//getting board coordinates for the balls
+
+	eecs467::Point <double> point;
+	std::vector <double> coord;
 
 	for (unsigned int i = 0; i < redBalls.size(); i++) {
 
-		float x = redBalls[i]%imgWidth; // this is wrong, needs to be changed
-		float y = redBalls[i]/imgWidth; // this is wrong
+		point.x = redBalls[i]%imgWidth; 
+		point.y = redBalls[i]/imgWidth; 
 			
-		float tmp = x_o + ((distBetSquares - gridSize)/2);		
+		coord = cali.translate(point);
+
+		double x = coord[0];
+		double y = coord[1];
+
+		double tmp = x_o + ((distBetSquares - gridSize)/2);		
 		int xBoard = (x - tmp)/gridCellSize;
 
 		tmp = -y_o + ((distBetSquares - gridSize)/2);
@@ -36,20 +72,22 @@ void determineStateofBoard(std::vector <int>& greenBalls, std::vector
 			point.y = yBoard;
 			availBalls.push_back(point);
 		}				
-		else {
-			board[xBoard][yBoard] = 'R';
-			std::cout << "A RED ball is at ( " << xBoard << "," << yBoard << ")" << 
-			std::endl;
-		}
+		else 
+			camBoard[3 * xBoard + yBoard] = 'R';
 	}
 		
 
 	for (unsigned int i = 0; i < greenBalls.size(); i++) {
 			
-		float x = greenBalls[i]%imgWidth; //this is wrong
-		float y = greenBalls[i]/imgWidth; //this is wrong
+		point.x = greenBalls[i]%imgWidth; 
+		point.y = greenBalls[i]/imgWidth; 
 			
-		float tmp = x_o + ((distBetSquares - gridSize)/2);		
+		coord = cali.translate(point);
+
+		double x = coord[0];
+		double y = coord[1];
+
+		double tmp = x_o + ((distBetSquares - gridSize)/2);		
 		int xBoard = (x - tmp)/gridCellSize;
 
 		tmp = -y_o + ((distBetSquares - gridSize)/2);
@@ -59,23 +97,10 @@ void determineStateofBoard(std::vector <int>& greenBalls, std::vector
 			point.x = xBoard;
 			point.y = yBoard;
 			availBalls.push_back(point);
-		}
-		else {
-			board[xBoard][yBoard] = 'G';
-			std::cout << "A GREEN ball is at ( " << xBoard << "," << yBoard << ")" << 
-			std::endl;
-		}
-	}		
-
-	displayBoard();
-		
-}
-
-void BoardState::displayBoard() {
-		
-	std::cout << "---------------------" << std::endl;
-    std::cout << board[0][0] << board[0][1] << board[0][2] << std::endl;
-    std::cout << board[1][0] << board[1][1] << board[1][2] << std::endl;
-   	std::cout << board[2][0] << board[2][1] << board[2][2] << std::endl;
-   	std::cout << "---------------------" << std::endl << std::endl;  		
+		}				
+		else 
+			camBoard[3 * xBoard + yBoard] = 'G';
+	}	
+	
+	return camBoard;			
 }
