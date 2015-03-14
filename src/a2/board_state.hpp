@@ -3,45 +3,36 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
-namespace eecs467 {
+//A2
+#include "game_constants.hpp"
+
+#include "math/point.hpp"
 
 class BoardState {
 	
-	/*
-	uses board coordinates where (0,0) is the regisration square at the top left 
-	and (4,4) is the registration square at the bottom right.
-	then returns all coordinates in the arm coordinate frame to be used for
-	placment of balls.
-	*/
-
 private: 
-	
-	/*
-	expects coordinates of the red and green balls in the board coordinate 
-	frame, and determines the state of the board	
-	*/	
-	void determineState(const std::vector <int>& greenBalls, const std::vector <int>& 
-						redBalls, cosnt std::vector <int>& cyanSquares);
 
 public: 
-	
-	std::vector <std::vector <char> > board;
-	
+
 	BoardState();
 	
+	std::vector <std::vector <char> > board; //tic tac toe baord
+	std::vector < eecs467::Point<int> > availBalls; //out of play balls
+
 	/*
-		updates the board to match the real world tictactoe board
-	*/
-	void getBoard();
-	
+	expects coordinates of the red and green balls in the img coordinate frame
+	and determines the state of the board	
+	*/	
+	void determineStateofBoard(std::vector <int>& greenBalls, std::vector 
+				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth);	
+
 	/* 
 		outputs the board
 	*/
 	void displayBoard();
 
 };
-
-}
 
 #endif

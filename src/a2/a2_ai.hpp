@@ -8,38 +8,36 @@
 #include "board_state.hpp"
 #include "game_constants.hpp"
 
-namespace eecs467 {
+#include "math/point.hpp"
 
 class A2AI {
 
 private:  	
 
-	/*
-		is there a win. exits if so
-	*/
-
-	bool win(const BoardState& board);
-
-	/*
-		is there a draw, exits if so
-	*/
-	bool draw(const BoardState& board);
+	char WinOrLose(const BoardState& boardstate, const char& playerID);
 	
 	/*
 		chooses next position to place ball
+		PlayerID is defined in game_constants.hpp
 	*/
-	int AI(const BoardState& board, const PlayerID& id);
+	eecs467::Point<int> AI(const BoardState& boardstate, const char& playerID);
 
 public:
 
 	A2AI();
-	
-	/*
-		returns arm frame coordinate where to put next ball
-	*/
-	std::vector <int> nextMove(const BoardState& boardstate, const PlayerID& id);
-};
 
-}
+	bool Win(const BoardState& boardstate, const char& playerID);
+
+	bool Lose(const BoardState& boardstate, const char& playerID);
+
+	bool Draw(const BoardState& boardstate, const char& playerID);
+
+	/*
+		returns board coordinate where to put next ball
+		before calling this function check if you have won, lost, or draw
+	*/
+	eecs467::Point<int> nextMove(const BoardState& boardstate, const char& playerID);
+
+};
 
 #endif

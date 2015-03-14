@@ -42,8 +42,7 @@ BIN_A2_IMAGE_TO_ARM_COORD = $(BIN_PATH)/a2_image_to_arm_coord
 #BIN_A2_INTEL = $(BIN_PATH)/a2_intel
 
 ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR) \
-	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD)
-	#$(BIN_A2_INTEL)
+	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) #$(BIN_A2_INTEL)
 
 all: $(ALL)
 
@@ -71,7 +70,7 @@ $(BIN_A2_IMAGE_TO_ARM_COORD): hsv.o image_processor.o a2_image_to_arm_coord.o $(
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_A2_INTEL): a2_ai.o board_state.o a2_intel.o $(LIBDEPS)
+$(BIN_A2_INTEL): board_state.o a2_ai.o a2_intel.o $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

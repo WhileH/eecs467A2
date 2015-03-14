@@ -1,8 +1,72 @@
 #include "a2_ai.hpp"
 
-bool A2AI::win(const BoardState& boardstate) {
+eecs467::Point<int> A2AI::nextMove(const BoardState& boardstate, const char& playerID) {
 
-	char winner = 'N'; //n - none	
+	return AI(boardstate, playerID);
+
+}
+
+eecs467::Point<int> A2AI::AI(const BoardState& boardstate, const char& playerID) {
+
+	eecs467::Point<int> nextMove;
+
+	//boardstate.displayBoard();
+
+	//simple AI for now, put ball in the next available cell
+	//going from position 0 to position 8
+	for (unsigned int  i = 0; i < 3; i++) {
+		for (unsigned int j = 0; j < 3; j++) {	
+			if (boardstate.board[i][j] == '.') {
+				nextMove.x = i;
+				nextMove.y = j;		
+			}
+		}
+	}	
+
+	std::cout << playerID << " moves to position ( " << nextMove.x << "," << 
+	nextMove.y << ")" << std::endl;
+	
+	return nextMove;
+}
+
+bool A2AI::Draw(const BoardState& boardstate, const char& playerID) {
+
+	for (unsigned int  i = 0; i < 3; i++) {
+		for (unsigned int j = 0; j < 3; j++) {		
+			if (boardstate.board[i][j] != 'R' && boardstate.board[i][j] != 'G')
+				return false;	
+		}
+	}
+	
+	std::cout << "It is a draw!" << std::endl;
+	return true;
+}
+
+bool A2AI::Win(const BoardState& boardstate, const char& playerID) {
+
+	char winID = WinOrLose(boardstate, playerID);
+
+	if (winID == playerID)
+		return true;
+	else 
+		return false;
+}
+
+bool A2AI::Lose(const BoardState& boardstate, const char& playerID) {
+
+	char winID = WinOrLose(boardstate, playerID);
+
+	if (winID == playerID)
+		return false;
+	if (winID == 'N')
+		return false;
+	else 
+		return true;
+}
+
+char A2AI::WinOrLose(const BoardState& boardstate, const char& playerID) {
+
+	char winner = 'N'; //none
 	
 	for (unsigned int i = 0; i < 3; i++) {
 
@@ -16,112 +80,13 @@ bool A2AI::win(const BoardState& boardstate) {
 	
 		//forward diagnol	
 		else if ( boardstate.board[0][0] == boardstate.board[1][1] && boardstate.board[1][1] == boardstate.board[2][2] ) 
-			winner = board.board[0][0];
+			winner = boardstate.board[0][0];
 	
 		//backward diagnol	
 		else if ( boardstate.board[0][2] == boardstate.board[1][1] && boardstate.board[1][1] == boardstate.board[2][0] ) 
 			winner = boardstate.board[0][2];
 	}
 	
-	if (winner == 'R') {
-		cout << "Red wins." << endl;
-		return true;
-	}
-	else if (winner == 'G') {
-		cout << "Green wins." << endl;
-		return true;
-	}
-	else 
-		return false;
-}
-
-bool A2AI::draw(const BoardState& boardstate) {
-
-	for (unsigned int  i = 0; i < 3; i++) {
-		for (unsigned int j = 0; j < 3; j++) {		
-			if (boardstate.board[i][j] != 'R' && boardstate.board[i][j] != 'G')
-				return false;	
-		}
-	}
-	
-	cout << "It is a draw!" << endl;
-	return true;
-}
-
-int A2AI::AI(const BoardState& board, const PlayerID& id) {
-
-	int nextMove;
-	
-	boardstate.displayBoard();
-
-	if(win() || draw())
-		exit(0);
-	
-	//simple AI for now, put ball in the next available cell
-	//going from position 0 to position 8
-	for (unsigned int  i = 0; i < 3; i++) {
-		for (unsigned int j = 0; j < 3; j++) {	
-			if (boardstate.board[i][j] == '.') {
-				nextMove = (i * 3) + j;			
-			}
-		}
-	}	
-	
-	cout << id << "moves to position " << nextMove << endl;
-	
-	return nextMove;
-
-std::vector <int> A2AI::nextMove(const BoardState& boardstate, const PlayerID& id) {
-
-	int move = AI(boardstate, id);
-
-	std::vector <int> nextMoveCoord (2);
-		
-	switch (move)
-
-		case 0:
-			nextMoveCoord[0] = 1;
-			nextMoveCoord[1] = 1;
-			break;
-		case 1:
-			nextMoveCoord[0] = 1;
-			nextMoveCoord[1] = 2;
-			break;
-		case 2:
-			nextMoveCoord[0] = 1;
-			nextMoveCoord[1] = 3;
-			break;
-		case 3:
-			nextMoveCoord[0] = 2;
-			nextMoveCoord[1] = 1;
-			break;
-		case 4:
-			nextMoveCoord[0] = 2;
-			nextMoveCoord[1] = 2;
-			break;
-		case 5:
-			nextMoveCoord[0] = 2;
-			nextMoveCoord[1] = 3;
-			break;
-		case 6:
-			nextMoveCoord[0] = 3;
-			nextMoveCoord[1] = 1;
-			break;
-		case 7:
-			nextMoveCoord[0] = 3;
-			nextMoveCoord[1] = 2;
-			break;
-		case 8:
-			nextMoveCoord[0] = 3;
-			nextMoveCoord[1] = 3;
-			break;
-		default:
-			std::cout << "invalid move position" << endl;
-			exit(1);
-			break;
-
-	nextMoveCoord = boardstate.BoardtoArmCoord(nextMoveCoord);
-
-	return nextMoveCoord;
+	return winner;
 }
 
