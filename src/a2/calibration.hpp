@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include "hsv.hpp"
-#include "math/Point.hpp"
+#include "math/point.hpp"
 
 class calibration_t{
 private:
@@ -32,7 +32,7 @@ public:
   std::vector<float> get_mask();
 
   // [x, y]
-  std::vector<double> translate(eecs467::Point<double> cam_coords);
+  eecs467::Point<double> translate(eecs467::Point<double> cam_coords);
 };
 
 #endif //CALIBRATION_HPP

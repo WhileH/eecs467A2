@@ -4,37 +4,41 @@
 #include <iostream>
 #include "hsv.hpp"
 #include "math/matd.h"
-#include "math/Point.hpp"
+#include "math/point.hpp"
 
 calibration_t::calibration_t(){
-    tx_mat = matd_create(3,3);
+  tx_mat = matd_create(3,3);
+  std::cout << "Constructor called" << std::endl;
 }
 
 calibration_t::~calibration_t(){
-    matd_destroy(tx_mat);
+  matd_destroy(tx_mat);
+  std::cout << "Destructor called\n";
 }
 
+
 void calibration_t::read_tx_mat(char* filename){
-    FILE *fp = fopen(filename,"r");
-    double e[6];
-    if(fp != NULL){
-        for(int i=0;i<6;++i){
-            fscanf(fp,"%f\n",&e[i]);
-        }
-        matd_put(tx_mat, 0, 0, e[0]);
-        matd_put(tx_mat, 0, 1, e[1]);
-        matd_put(tx_mat, 0, 2, e[2]);
-        matd_put(tx_mat, 1, 0, e[3]);
-        matd_put(tx_mat, 1, 1, e[4]);
-        matd_put(tx_mat, 1, 2, e[5]);
-        matd_put(tx_mat, 2, 0, 0);
-        matd_put(tx_mat, 2, 1, 0);
-        matd_put(tx_mat, 2, 2, 1.0); 
-    }
-    else{
-        printf("Error on opening matrix file\n");
-        exit(1);
-    }
+  std::ifstream f(filename);
+  double e[6];
+  if(f != NULL){
+    f >> e[0] >> e[1] >> e[2] >> e[3] >> e[4] >> e[5];
+    std::cout << e[0] << ' ' << e[1] << ' ' << e[2] << std::endl;
+    matd_put(tx_mat, 0, 0, e[0]);
+    matd_put(tx_mat, 0, 1, e[1]);
+    matd_put(tx_mat, 0, 2, e[2]);
+    matd_put(tx_mat, 1, 0, e[3]);
+    matd_put(tx_mat, 1, 1, e[4]);
+    matd_put(tx_mat, 1, 2, e[5]);
+    matd_put(tx_mat, 2, 0, 0);
+    matd_put(tx_mat, 2, 1, 0);
+    matd_put(tx_mat, 2, 2, 1.0); 
+    std::cout << e[0] << ' ' << e[1] << ' ' << e[2] << std::endl;
+  }
+  else{
+    printf("Error on opening matrix file\n");
+    exit(1);
+  }
+    
 }
 
 void calibration_t::read_red_range(char* filename){
@@ -50,14 +54,14 @@ void calibration_t::read_green_range(char *filename){
 }
 
 void calibration_t::read_mask(char* filename){
-    FILE *fp = fopen("../calibration/mask_rect.txt","r");
+    std::ifstream f(filename); 
     float e[4];
-    if(fp != NULL){
-        fscanf(fp,"%f %f %f %f\n",&e[0],&e[1].&e[2],&e[3]);
-        mask[0] = e[0];
-        mask[1] = e[1];
-        mask[2] = e[2];
-        mask[3] = e[3];
+    if(f != NULL){
+      f >> e[0] >> e[1] >> e[2] >> e[3];
+      mask.push_back(e[0]);
+      mask.push_back(e[1]);
+      mask.push_back(e[2]);
+      mask.push_back(e[3]);
     }
     else{
         printf("Error on opening mask file\n");
@@ -89,7 +93,7 @@ std::vector<float> calibration_t::get_mask(){
     return mask;
 }
 
-eecs467::Point<double> calibration_::translate(eecs467::cam_coords){
+eecs467::Point<double> calibration_t::translate(eecs467::Point<double> cam_coords){
     eecs467::Point<double> ground_in_arm;
     ground_in_arm.x = 
             matd_get(tx_mat, 0, 0)*cam_coords.x

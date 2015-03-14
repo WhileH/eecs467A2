@@ -7,8 +7,8 @@ inv_kinematics::inv_kinematics()
   cmds.len = NUM_SERVOS;
   cmds.commands = (dynamixel_command_t*) calloc(NUM_SERVOS, sizeof(dynamixel_command_t));
   lcm = lcm_create(NULL);
-  
-  
+ 
+
   for (int id = 0; id < NUM_SERVOS; id++) {
     cmds.commands[id].utime = utime_now ();
     if(id == 5){
@@ -17,7 +17,7 @@ inv_kinematics::inv_kinematics()
     }
     else{
       cmds.commands[id].max_torque = 0.5;
-      cmds.commands[id].speed = 0.075;
+      cmds.commands[id].speed = 0.15;
     }    
   }
 }
@@ -39,7 +39,7 @@ inv_kinematics::inv_kinematics(lcm_t *l, const char *com_chan)
     }
     else{
       cmds.commands[id].max_torque = 0.5;
-      cmds.commands[id].speed = 0.075;
+      cmds.commands[id].speed = 0.15;
     }
     
     dynamixel_command_list_t_publish (lcm, command_channel, &cmds);
@@ -86,10 +86,21 @@ void inv_kinematics::move_2_pos(double x, double y)
   int servo_order[5] = {0, 4, 3, 2, 1};
   for(auto i : servo_order){
     cmds.commands[i].utime = utime_now();
-    cmds.commands[i].position_radians = angles[i];
+    if(i == 2)
+      cmds.commands[i].position_radians = angles[i] - (M_PI / 12.0);
+    else if(i == 3)
+      cmds.commands[i].position_radians = angles[i] + (M_PI/12.0);
+    else
+      cmds.commands[i].position_radians = angles[i];
     dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
     usleep(1000000);
   }
+
+  cmds.commands[2].utime = cmds.commands[3].utime = utime_now();
+  cmds.commands[2].position_radians = cmds.commands[2].position_radians + (M_PI / 12.0);
+  cmds.commands[3].position_radians = cmds.commands[3].position_radians - (M_PI / 12.0);
+  dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+  usleep(750000);
   return;
 }
 
@@ -98,6 +109,13 @@ void inv_kinematics::go_home()
   vector<double> angles(5);
 
   angles[0] = angles[1] = angles[2] = angles[3] = angles[4] = 0.0;
+  cmds.commands[2].utime = utime_now();
+  cmds.commands[3].utime = utime_now();
+  cmds.commands[2].position_radians = cmds.commands[2].position_radians - (M_PI / 12.0);
+  cmds.commands[3].position_radians = cmds.commands[3].position_radians + (M_PI / 12.0);
+  dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+  usleep(750000);
+
   int servo_order[5] = {1, 2, 3, 4, 0};
   for(auto i : servo_order){
     cmds.commands[i].utime = utime_now();
@@ -107,7 +125,7 @@ void inv_kinematics::go_home()
   }
   return;
 }
-
+ 
 void inv_kinematics::pick_up(double x, double y)
 {
   move_2_pos(x, y);

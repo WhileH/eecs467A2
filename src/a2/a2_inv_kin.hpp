@@ -35,10 +35,10 @@ const double d2 = 0.10;
 const double d3 = 0.10;
 const double d4 = 0.115;
 
-const double h = 0.1;
+const double h = 0.085;
 
-const double FINGERS_CLOSE = 1.55;
-const double FINGERS_OPEN = 0;
+const double FINGERS_CLOSE = 1.7;
+const double FINGERS_OPEN = 1.1;
 
 class inv_kinematics{
 public:
