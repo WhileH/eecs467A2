@@ -29,7 +29,7 @@ LDFLAGS  = $(LDFLAGS_STD) \
 #LIB_MAPPING = $(LIB_PATH)/libmapping.a
 
 LIB_A2 = $(LIB_PATH)/liba2.a
-LIB_A2_OBJ = hsv.o image_processor.o a2_inv_kin.o arm_ai.o gameboard.o calibration.o #board_state.o
+LIB_A2_OBJ = hsv.o image_processor.o a2_inv_kin.o arm_ai.o gameboard.o calibration.o board_state.o
 
 LIBDEPS  = $(call libdeps, $(LDFLAGS))
 

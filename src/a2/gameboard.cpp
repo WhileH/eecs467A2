@@ -24,6 +24,12 @@ void gameboard::update_board(int move, char pieces){
     }
 }
 
+void gameboard::update_entire_board(std::vector <char> b){
+	for(int i=0;i<9;++i){
+		board[i] = b[i];
+	}
+}
+
 int gameboard::is_win(char pieces){
     arm_ai ai = arm_ai(pieces);
     return ai.is_win(this->get_board(pieces));

@@ -6,6 +6,7 @@ class gameboard{
         gameboard();
         void print_board();
         void update_board(int move,char pieces);
+		void update_entire_board(std::vector <char> b);
         int  is_win(char pieces);//1 pieces win, 0 draw, -1 pieces lose
         bool is_valid(char piece1,char piece2);
         bool is_finished();
