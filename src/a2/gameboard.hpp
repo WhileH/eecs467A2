@@ -1,18 +1,18 @@
 #ifndef GAMEBOARD_HPP
 #define GAMEBOARD_HPP
-
+#include <vector>
 class gameboard{
     public:
         gameboard();
         void print_board();
-        void update_board(int move,int player);
-        int  is_win();
-        bool is_valid();
+        void update_board(int move,char pieces);
+        int  is_win(char pieces);//1 pieces win, 0 draw, -1 pieces lose
+        bool is_valid(char piece1,char piece2);
         bool is_finished();
-        int* get_board(); 
+        std::vector<int> get_board(char pieces); 
     private:
         char print_grid(int i);
-        int board[9];
+        std::vector<char> board;
 };
 
 #endif

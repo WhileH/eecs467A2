@@ -4,13 +4,13 @@
 
 class arm_ai{
     public:
-        arm_ai(int p);    
-        int calc_move(int board[9]);//didn't modify board
-        int is_win(const int board[9]);
-        int get_player();
+        arm_ai(char p);    
+        int calc_move(std::vector<int> board);//didn't modify board
+        int is_win(const std::vector<int> board);
+        char get_player();
     private:
-        int min_max(int board[9],int player);//didn't modify board
-        int player;// 1 or -1
+        int min_max(std::vector<int> &board,int player);//didn't modify board
+        char player;// 1 or -1
 };
 
 #endif

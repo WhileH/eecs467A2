@@ -1,61 +1,45 @@
 #include "gameboard.hpp"
 #include <stdio.h>
 #include <cstdlib>
+#include <vector>
+#include "arm_ai.hpp"
 gameboard::gameboard(){
     for(int i=0;i<9;++i){
-        board[i] = 0;
+        //board[i] = ' ';
+        board.push_back(' ');
     }
-}
-
-char gameboard::print_grid(int i){
-    switch(i){
-        case -1:
-            return 'x';
-        case 1:
-            return 'o';
-        default:
-            return ' ';
-    }
-    return ' ';
 }
 
 void gameboard::print_board(){
-    printf(" %c | %c | %c\n",print_grid(board[0]),print_grid(board[1]),print_grid(board[2]));
+    printf(" %c | %c | %c\n",board[0],board[1],board[2]);
     printf("---+---+---\n");
-    printf(" %c | %c | %c\n",print_grid(board[3]),print_grid(board[4]),print_grid(board[5]));
+    printf(" %c | %c | %c\n",board[3],board[4],board[5]);
     printf("---+---+---\n");
-    printf(" %c | %c | %c\n",print_grid(board[6]),print_grid(board[7]),print_grid(board[8]));
+    printf(" %c | %c | %c\n",board[6],board[7],board[8]);
 }
 
-void gameboard::update_board(int move, int player){
-    if(move >=0 && move < 9 && board[move] == 0){
-        board[move] = -1*player;
+void gameboard::update_board(int move, char pieces){
+    if(move >=0 && move < 9 && board[move] == ' '){
+        board[move] = pieces;
     }
 }
 
-int gameboard::is_win(){
-    unsigned wins[8][3] = {{0,1,2},{3,4,5},{6,7,8},{0,3,6},{1,4,7},{2,5,8},{0,4,8},{2,4,6}};
-    int i;
-    for(i = 0; i < 8; ++i) {
-        if(board[wins[i][0]] != 0 &&
-                board[wins[i][0]] == board[wins[i][1]] &&
-                board[wins[i][0]] == board[wins[i][2]])
-            return board[wins[i][2]];
-    }
-    return 0;
+int gameboard::is_win(char pieces){
+    arm_ai ai = arm_ai(pieces);
+    return ai.is_win(this->get_board(pieces));
 }
 
-bool gameboard::is_valid(){
+bool gameboard::is_valid(char piece1, char piece2){
     int p1_count = 0;//1
     int p2_count = 0;//-1
     for(int i=0;i<9;++i){
-        if(board[i] == 1){
+        if(board[i] == piece1){
             ++p1_count;
         }
-        else if(board[i] == -1){
+        else if(board[i] == piece2){
             ++p2_count;
         }
-        else if(board[i] == 0){
+        else if(board[i] == ' '){
             continue;
         }
         else{
@@ -70,13 +54,30 @@ bool gameboard::is_valid(){
 
 bool gameboard::is_finished(){
     for(int i=0;i<9;++i){
-        if(board[i] == 0){
+        if(board[i] == ' '){
             return false;
         }
     }
     return true;
 }
 
-int* gameboard::get_board(){
-    return board;
+std::vector<int> gameboard::get_board(char pieces){
+    std::vector<int> b;
+    for(int i=0;i<9;++i){
+        if(board[i] == pieces){
+            //b[i] = 1;
+            b.push_back(1);
+        }
+        else if(board[i] == ' '){
+            //b[i] = 0;
+            b.push_back(0);
+        }
+        else{
+            //b[i] = -1;
+            b.push_back(-1);
+        }
+        //printf("%d ",b[i]);
+    }
+    //printf("\n");
+    return b;
 }
