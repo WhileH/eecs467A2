@@ -205,6 +205,7 @@ static void display_started(vx_application_t *app, vx_display_t *disp){
   state.cal.read_tx_mat("../calibration/transform_elements.txt");
   state.ik.set_lcm(state.lcm);
   state.ik.set_com_channel(state.command_channel);
+  state.ik.go_home();
 
   state.cal.read_mask("../calibration/mask_rect.txt");
   vector<float> xys = state.cal.get_mask();

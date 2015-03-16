@@ -36,7 +36,7 @@ public:
 	
 	eecs467::Point <int> nextFreeBall();
 
-	eecs467::Point<int> convert(int x, int y);
+  eecs467::Point<int> convert(eecs467::Point<double> p, double d);
 	
 };
 

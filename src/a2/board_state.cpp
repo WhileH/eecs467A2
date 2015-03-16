@@ -24,6 +24,7 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
         camBoard.push_back(' ');
 
 	//get distance between registration squares (pixels to meters)
+	 //not needed annymore, will keep temporarily for sanity checks
 	eecs467::Point<double> sq1Point;
 	eecs467::Point<double> sq2Point;
 	 
@@ -49,6 +50,7 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 	double y_o = sq1Point.y;
 	double distBetSquares = sqrt(sq(sq2Point.y - sq1Point.y)+sq(sq2Point.x-sq1Point.x));
 	std::cout <<"distBetSquares:"<< distBetSquares << std::endl;
+
 	//getting board coordinates for the balls
  
 	eecs467::Point <double> point;
@@ -59,20 +61,19 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 		point.y = imgHeight - (redBalls[i]/imgWidth); 
 			
 		point = cali.translate(point);
+		std::cout << "orig" << point.x << "," <<point.y << std::endl;
+		double xBoard = floor(point.x/gridCellSize);
+		double yBoard = floor(point.y/gridCellSize);
 
-		double tmp = x_o + (distBetSquares - gridSize);		
-		int xBoard = (point.x - tmp)/(gridCellSize);
+		double d = fabs(point.x) + fabs(point.y);
 
-		tmp = -y_o + (distBetSquares - gridSize);
-		int yBoard = (-point.y - tmp)/(gridCellSize);
+		std::cout << "red: "<< xBoard << ' '<< yBoard << "  " << d << std::endl;
 
-		std::cout << "red: "<< xBoard << ' '<< yBoard <<std::endl;
-
-		if( xBoard > -2 || yBoard > -2 || xBoard < -4 || yBoard < -4)
+		if( (point.x > 0) || (point.y >= sq1Point.y) || (point.y <= -1*sq1Point.y))
 			availBalls.push_back(point);
 		else {
-			point = convert(xBoard, yBoard); //converts to board coordinates
-			std::cout << "red_convert: "<< point.x << ' '<< point.y <<std::endl;
+		  point = convert(point, d); //converts to board coordinates
+		  std::cout << "red_convert: "<< point.x << ' '<< point.y <<std::endl;
 			camBoard[3 * point.x + point.y] = 'R';
 		}
 
@@ -85,20 +86,19 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 		point.y = imgHeight - (greenBalls[i]/imgWidth); 
 			
 		point = cali.translate(point);
+		std::cout << "orig" << point.x << "," <<point.y << std::endl;
+		double xBoard = floor(point.x/gridCellSize);
+		double yBoard = floor(point.y/gridCellSize);
 
-		double tmp = x_o + (distBetSquares - gridSize);		
-		int xBoard = (point.x - tmp)/gridCellSize;
+		double d = fabs(point.x) + fabs(point.y);
 
-		tmp = -y_o + (distBetSquares - gridSize);
-		int yBoard = (-point.y - tmp)/gridCellSize;
+		std::cout << "Green: "<< xBoard << ' '<< yBoard << "  " << d << std::endl;
 
-		std::cout << "Green: "<< xBoard << ' '<< yBoard <<std::endl;
-
-		if( xBoard > -2 || yBoard > -2 || xBoard < -4 || yBoard < -4)
+		if( (point.x > 0) || (point.y >= sq1Point.y) || (point.y <= -1*sq1Point.y))
 			availBalls.push_back(point);
 		else {
-			point = convert(xBoard, yBoard); //converts to board coordinates
-			std::cout << "green_convert: "<< point.x << ' '<< point.y <<std::endl;
+		  point = convert(point, d); //converts to board coordinates
+		  std::cout << "green_convert: "<< point.x << ' '<< point.y <<std::endl;
 			camBoard[3 * point.x + point.y] = 'G';
 		}
 
@@ -107,52 +107,55 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 	return camBoard;			
 }
 
-eecs467::Point<int> BoardState::convert(int x, int y){
+eecs467::Point<int> BoardState::convert(eecs467::Point<double> p, double d){
 	
-	eecs467::Point<int> point;
 
-	if ( x==-2 and y==-2 ) {
-		point.x = 0;
-		point.y = 0;
-	}
-	else if ( x==-3 and y==-2 ) {
-		point.x = 0;
-		point.y = 1;
-	}
-	else if ( x==-4 and y==-2 ) {
-		point.x = 0;
-		point.y = 2;
-	}
-	else if ( x==-2 and y==-3 ) {
-		point.x = 1;
-		point.y = 0;
-	}
-	else if ( x==-3 and y==-3 ) {
-		point.x = 1;
-		point.y = 1;
-	}
-	else if ( x==-4 and y==-3 ) {
-		point.x = 1;
-		point.y = 2;
-	}
-	else if ( x==-2 and y==-4 ) {
-		point.x = 2;
-		point.y = 0;
-	}
-	else if ( x==-3 and y==-4 ) {
-		point.x = 2;
-		point.y = 1;
-	}
-	else if ( x==-4 and y==-4 ) {
-		point.x = 2;
-		point.y = 2;
-	}
-	//else {
-	//	point.x = x;
-	//	point.y = y;
-	//	availBalls.push_back(point);
-	//} 
+  //d = round(d * 20.0) / 20.0;
+  //std::cout << '\t' << d << std::endl;
+  eecs467::Point<int> point;
+  double l_thres1 = 0.05;
+  double thres1 = 0.075;
+  double thres2 = 0.14;
+  double thres3 = 0.19;
+  double thres4 = 0.25;
+
+  if ( d>= l_thres1 && d <= thres1 ) {
+    point.x = 0;
+    point.y = 1;
+  }
+  else if ( d>thres1 && d<=thres2 && p.y>0 && fabs(p.x)<=0.08) {
+    point.x = 0;
+    point.y = 0;
+  }
+  else if ( d>thres1 && d<=thres2 && p.y<0 && fabs(p.x)<=0.08) {
+    point.x = 0;
+    point.y = 2;
+  }
+  else if ( d>thres1 && d<=thres2 && fabs(p.x)>=0.09 ) {
+    point.x = 1;
+    point.y = 1;
+  }
+  else if ( d>thres2 && d<=thres3 && p.y>0 && fabs(p.x)<=0.14 ) {
+    point.x = 1;
+    point.y = 0;
+  }
+  else if ( d>thres2 && d<=thres3 && p.y<0 && fabs(p.x)<=0.14 ) {
+    point.x = 1;
+    point.y = 2;
+  }
+  else if ( d>thres2 && d<=thres3 && fabs(p.x)>0.14 ) {
+    point.x = 2;
+    point.y = 1;
+  }
+  else if ( d>thres3 && d<=thres4 && p.y>0 ) {
+    point.x = 2;
+    point.y = 0;
+  }
+  else if ( d>thres3 && d<=thres4 && p.y<0 ) {
+    point.x = 2;
+    point.y = 2;
+  }
 		
-	return point;
+  return point;
 }
 

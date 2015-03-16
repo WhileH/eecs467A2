@@ -232,7 +232,7 @@ class state_t
 
 				if (state->board_state.ballsLeft()){
 					eecs467::Point<double> point = state->board_state.nextFreeBall();
-					std::cout << "outoplay" << point.x << "," << point.y << std::endl;
+					std::cout << "Pick Up" << point.x << "," << point.y << std::endl;
 				}
 
 				if(im != NULL){
