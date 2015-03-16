@@ -30,13 +30,14 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 	std::sort(cyanSquares.begin(), cyanSquares.end());
 
 	std::cout<<"sorted cyanSquares here"<<std::endl;
- 
+	
 	sq1Point.x = cyanSquares[0]%imgWidth;
 	sq1Point.y = imgHeight - (cyanSquares[0]/imgWidth);
 
 	sq2Point.x = cyanSquares[1]%imgWidth;
 	sq2Point.y = imgHeight - (cyanSquares[1]/imgWidth);
- 
+	std::cout<< "sq1Point: "<<sq1Point.x<<" "<< sq1Point.y<<std::endl;
+	std::cout<< "sq2Point: "<<sq2Point.x<<" "<< sq2Point.y<<std::endl;
 	sq1Point = cali.translate(sq1Point);
 	sq2Point = cali.translate(sq2Point);
 

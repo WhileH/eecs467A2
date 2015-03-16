@@ -15,9 +15,13 @@ inv_kinematics::inv_kinematics()
       cmds.commands[id].max_torque = 0.75;
       cmds.commands[id].speed = 0.1;
     }
-    else{
+    else if(id == 0){
       cmds.commands[id].max_torque = 0.5;
       cmds.commands[id].speed = 0.15;
+    }
+    else{
+      cmds.commands[id].max_torque = 0.5;
+      cmds.commands[id].speed = 0.09;
     }    
   }
 }
@@ -37,9 +41,13 @@ inv_kinematics::inv_kinematics(lcm_t *l, const char *com_chan)
       cmds.commands[id].max_torque = 0.75;
       cmds.commands[id].speed = 0.1;
     }
-    else{
+    else if(id == 0){
       cmds.commands[id].max_torque = 0.5;
       cmds.commands[id].speed = 0.15;
+    }
+    else{
+      cmds.commands[id].max_torque = 0.5;
+      cmds.commands[id].speed = 0.09;
     }
     
     dynamixel_command_list_t_publish (lcm, command_channel, &cmds);
@@ -48,6 +56,7 @@ inv_kinematics::inv_kinematics(lcm_t *l, const char *com_chan)
 
 inv_kinematics::~inv_kinematics()
 {
+
 }
 
 void inv_kinematics::move_2_pos(double x, double y)
@@ -76,7 +85,6 @@ void inv_kinematics::move_2_pos(double x, double y)
     double a = fasin(d / d4);
     angles[3] -= a;
   }
-
   
   //cout << "base: " << angles[0] << endl;
   //cout << "shoulder: " << angles[1] << endl;
@@ -128,6 +136,9 @@ void inv_kinematics::go_home()
  
 void inv_kinematics::pick_up(double x, double y)
 {
+  cmds.commands[5].position_radians = FINGERS_OPEN_PICKUP;
+  dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+  usleep(500000);
   move_2_pos(x, y);
   cmds.commands[5].position_radians = FINGERS_CLOSE;
   dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
@@ -139,7 +150,7 @@ void inv_kinematics::pick_up(double x, double y)
 void inv_kinematics::place(double x, double y)
 {
   move_2_pos(x, y);
-  cmds.commands[5].position_radians = FINGERS_OPEN;
+  cmds.commands[5].position_radians = FINGERS_OPEN_PLACE;
   dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
   usleep(2500000);
   go_home();

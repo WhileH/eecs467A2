@@ -48,7 +48,8 @@ struct state
   eecs467::Point<float> corner_coords[2];
   eecs467::Point<float> click_point;
   eecs467::Point<double> arm_coords;
-  image_u32_t *im; 
+  int im_width;
+  int im_height;
   //eecs467::Point<double> arm_coords_inCam;
   FILE *printfile;
   bool has_tx;
@@ -133,8 +134,11 @@ void render_loop(){
   pthread_mutex_lock(&state.data_mutex);
   vx_buffer_t *buf = vx_world_get_buffer(state.vxworld,"image");
   std::vector<int> cyan_center_list;
+  image_u32_t *im;
   if(state.usePic){
-    state.im = image_u32_create_from_pnm(state.pic_url); 
+    im = image_u32_create_from_pnm(state.pic_url); 
+    state.im_width = im->width;
+    state.im_height = im->height;
   }
   else if(isrc != NULL){
     image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
@@ -143,37 +147,39 @@ void render_loop(){
       printf("get_frame fail\n");
     }
     else{
-      state.im = image_convert_u32(frmd);
+      im = image_convert_u32(frmd);
+      state.im_width = im->width;
+      state.im_height = im->height;
     }
     fflush(stdout);
     isrc->release_frame(isrc,frmd);
   }
   if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
-    state.im_proc.image_masking(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
-    cyan_center_list = state.im_proc.blob_detection(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
+    state.im_proc.image_masking(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
+    cyan_center_list = state.im_proc.blob_detection(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
   }
   if(!cyan_center_list.empty()){
     for(int i=0; i<cyan_center_list.size(); ++i){
-      int y = (cyan_center_list[i]) / state.im->width;
-      int x = (cyan_center_list[i]) % state.im->width;
-      state.im_proc.draw_circle(state.im, x, y, 20.0, 0xffffff00);
+      int y = (cyan_center_list[i]) / state.im_width;
+      int x = (cyan_center_list[i]) % state.im_width;
+      state.im_proc.draw_circle(im, x, y, 20.0, 0xffffff00);
       cout << "Centroid[" << i << "]: (" << x << ", " << y << ")" << endl;
     }
   }
     
-  if(state.im != NULL){
-    vx_object_t *vim = vxo_image_from_u32(state.im,
+  if(im != NULL){
+    vx_object_t *vim = vxo_image_from_u32(im,
 					  VXO_IMAGE_FLIPY,
 					  VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
     //use pix coords to make a fix image
     vx_buffer_add_back (buf,vxo_chain (
-				       vxo_mat_translate3 (-state.im->width/2., -state.im->height/2., 0.),
+				       vxo_mat_translate3 (-state.im_width/2., -state.im_height/2., 0.),
 				       vim));
       
       
       
   }
-  image_u32_destroy(state.im);
+  image_u32_destroy(im);
   pthread_mutex_unlock(&state.data_mutex);
   vx_buffer_swap(buf);
   usleep(1000000/fps);
@@ -181,6 +187,7 @@ void render_loop(){
   while(1){
     pthread_mutex_lock(&state.data_mutex);
     if(state.has_tx){
+      image_u32_t *im;
       if(isrc != NULL){
 	image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
 	int res = isrc->get_frame(isrc,frmd);
@@ -188,31 +195,33 @@ void render_loop(){
 	  printf("get_frame fail\n");
 	}
 	else{
-	  state.im = image_convert_u32(frmd);
+	  im = image_convert_u32(frmd);
+	  state.im_width = im->width;
+	  state.im_height = im->height;
 	}
 	fflush(stdout);
 	isrc->release_frame(isrc,frmd);
       }
       if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
-	state.im_proc.image_masking(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
-	cyan_center_list = state.im_proc.blob_detection(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
+	state.im_proc.image_masking(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
+	cyan_center_list = state.im_proc.blob_detection(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
       }
       if(!cyan_center_list.empty()){
 	for(int i=0; i<cyan_center_list.size(); ++i){
-	  int y = (cyan_center_list[i]) / state.im->width;
-	  int x = (cyan_center_list[i]) % state.im->width;
-	  state.im_proc.draw_circle(state.im, x, y, 20.0, 0xffffff00);
+	  int y = (cyan_center_list[i]) / state.im_width;
+	  int x = (cyan_center_list[i]) % state.im_width;
+	  state.im_proc.draw_circle(im, x, y, 20.0, 0xffffff00);
 	  //cout << "Centroid[" << i << "]: (" << x << ", " << y << ")" << endl;
 	}
       }
     
-      if(state.im != NULL){
-	vx_object_t *vim = vxo_image_from_u32(state.im,
+      if(im != NULL){
+	vx_object_t *vim = vxo_image_from_u32(im,
 					      VXO_IMAGE_FLIPY,
 					      VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
 	//use pix coords to make a fix image
 	vx_buffer_add_back (buf,vxo_chain (
-					   vxo_mat_translate3 (-state.im->width/2., -state.im->height/2., 0.),
+					   vxo_mat_translate3 (-state.im_width/2., -state.im_height/2., 0.),
 					   vim));
       
       
@@ -220,7 +229,7 @@ void render_loop(){
       }
       vx_buffer_swap(buf);
       usleep(1000000/fps);
-      image_u32_destroy(state.im);
+      image_u32_destroy(im);
     }
     pthread_mutex_unlock(&state.data_mutex);
   }
@@ -233,15 +242,14 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
     vx_ray3_t ray;
     vx_camera_pos_compute_ray (pos, mouse->x, mouse->y, &ray);
     double ground[3];
-    ground[2] = 1;
     vx_ray3_intersect_xy(&ray, 0, ground);
     printf ("Mouse clicked at coords: [%8.3f, %8.3f] Ground clicked at coords: [%6.3f, %6.3f]\n",
 	    mouse->x, mouse->y, ground[0], ground[1]);
     state.click_point.x = ground[0];
     state.click_point.y = ground[1];
     if(state.has_tx){
-      ground[0] = (state.im->width + ground[0]);
-      ground[1] = (state.im->height + ground[1]);
+      ground[0] = ((state.im_width/2) + ground[0]);
+      ground[1] = ((state.im_height/2) + ground[1]);
       ground[2] = 1;
       double ground_in_arm[3];
       ground_in_arm[0] = matd_get(state.tx_mat, 0, 0)*ground[0] + matd_get(state.tx_mat, 0, 1)*ground[1] + matd_get(state.tx_mat, 0, 2)*ground[2];
@@ -263,8 +271,8 @@ static int key_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *k
        * This uses click position. If causes problems, use nearest cyan centroid
        *
        */
-      fprintf(state.printfile, "%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
-      printf("%f %f %f %f\n", state.im->width + state.click_point.x, state.im->height + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
+      fprintf(state.printfile, "%f %f %f %f\n", state.im_width/2.0 + state.click_point.x, state.im_height/2.0 + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
+      printf("%f %f %f %f\n", state.im_width/2.0 + state.click_point.x, state.im_height/2.0 + state.click_point.y, state.arm_coords.x, state.arm_coords.y);
     }
     if(key->key_code == 'c'){
       cout << "Closing file. Don't try to write any more" << endl;
@@ -333,7 +341,7 @@ static void display_finished(vx_application_t *app, vx_display_t *disp){
   vx_layer_t *layer = NULL;
   zhash_remove(state.layers, &disp, NULL, &layer);
   vx_layer_destroy(layer);
-  image_u32_destroy (state.im);
+  //image_u32_destroy (state.im);
   matd_destroy(state.tx_mat);
   pthread_mutex_unlock(&state.mutex);
 }

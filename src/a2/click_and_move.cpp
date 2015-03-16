@@ -43,7 +43,8 @@ struct state
 
   eecs467::Point<float> corner_coords[2];
   eecs467::Point<float> click_point;
-  image_u32_t *im;
+  int im_width;
+  int im_height;
   queue<eecs467::Point<double>> move_Q;
 
   calibration_t cal;
@@ -111,6 +112,7 @@ void render_loop(){
   while(1){
     pthread_mutex_lock(&state.data_mutex);
     vx_buffer_t *buf = vx_world_get_buffer(state.vxworld,"image");
+    image_u32_t *im;
     if(isrc != NULL){
       image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
       int res = isrc->get_frame(isrc,frmd);
@@ -118,26 +120,28 @@ void render_loop(){
 	printf("get_frame fail\n");
       }
       else{
-	state.im = image_convert_u32(frmd);
+	im = image_convert_u32(frmd);
+	state.im_width = im->width;
+	state.im_height = im->height;
       }
       fflush(stdout);
       isrc->release_frame(isrc,frmd);
     }
     if((state.corner_coords[0].x != -1) && (state.corner_coords[0].y != -1) && (state.corner_coords[1].x != -1) && (state.corner_coords[1].y != -1)){  
-      state.im_proc.image_masking(state.im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
+      state.im_proc.image_masking(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
     }
     
-    if(state.im != NULL){
-      vx_object_t *vim = vxo_image_from_u32(state.im,
+    if(im != NULL){
+      vx_object_t *vim = vxo_image_from_u32(im,
 					    VXO_IMAGE_FLIPY,
 					    VX_TEX_MIN_FILTER | VX_TEX_MAG_FILTER);
       //use pix coords to make a fix image
       vx_buffer_add_back (buf,vxo_chain (
-					 vxo_mat_translate3 (-state.im->width/2., -state.im->height/2., 0.),
+					 vxo_mat_translate3 (-im->width/2., -im->height/2., 0.),
 					 vim));
     }
     vx_buffer_swap(buf);
-    image_u32_destroy(state.im);
+    image_u32_destroy(im);
     
     pthread_mutex_unlock(&state.data_mutex);
     usleep(1000000/fps);
@@ -157,11 +161,13 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
     state.click_point.x = ground[0];
     state.click_point.y = ground[1];
     eecs467::Point<double> cam_coords;
-    cam_coords.x = ground[0] + state.im->width;
-    cam_coords.y = ground[1] + state.im->height;
+    cout<<"image size"<<state.im_width<<" "<<state.im_height<<endl;
+    cam_coords.x = ground[0] + (state.im_width/2.0);
+    cam_coords.y = ground[1] + (state.im_height/2.0);
     eecs467::Point<double> arm_coords = state.cal.translate(cam_coords);
     if(state.move_Q.size() < 2){
-      //cout << "Adding to Q: " << arm_coords.x << ' ' << arm_coords.y << endl;
+      cout << "Arm coord in pixel" << cam_coords.x << " "<< cam_coords.y << endl;
+      cout << "Adding to Q: " << arm_coords.x << ' ' << arm_coords.y << endl;
       state.move_Q.push(arm_coords);
     }
   }
@@ -182,7 +188,7 @@ static void display_finished(vx_application_t *app, vx_display_t *disp){
   vx_layer_t *layer = NULL;
   zhash_remove(state.layers, &disp, NULL, &layer);
   vx_layer_destroy(layer);
-  image_u32_destroy (state.im);
+  //image_u32_destroy (state.im);
   pthread_mutex_unlock(&state.mutex);
 }
 
