@@ -66,6 +66,8 @@ struct state
 
   eecs467::Point<float> corner_coords[2];
   eecs467::Point<float> click_point;
+
+  image_source_t *isrc;
   int im_width;
   int im_height;
 
@@ -122,7 +124,8 @@ void status_loop(){
 				     state.status_channel,
 				     status_handler,
 				     &state);
-
+  cout << "status loop" << endl;
+  
   ttt_turn_t_subscribe (state.lcm,
 			state.recv_chan,
 			turn_handler,
@@ -133,11 +136,8 @@ void status_loop(){
 }
 
 void command_loop(){
-  state.color = 'q';
-  while(state.color != 'G' && state.color != 'R'){
-    cout << "Which color are you playing as?" << endl;
-    cin >> state.color;
-  }
+  while(state.color != 'G' and state.color != 'R'){}
+  //usleep(1000000);
   state.ai = arm_ai(state.color);
   state.inv_kin.go_home();
   if(state.color == 'G'){
@@ -145,24 +145,21 @@ void command_loop(){
   }
   else
     state.our_turn = true;
+  cout << "command_loop" << endl;
   
   while(!state.game_board.is_finished() && (state.game_board.is_win(state.ai.get_player()) == 0)){
     pthread_mutex_lock(&state.arm_mutex);
+    int i = 0;
     while(!state.our_turn){
       pthread_mutex_unlock(&state.arm_mutex);
+      //if(!i)
+	cout << "Waiting for turn" << endl;
+      ++i;
       usleep(250000);
       pthread_mutex_lock(&state.arm_mutex);
     }
     pthread_mutex_unlock(&state.arm_mutex);
-    image_source_t *isrc = NULL;
-    isrc = image_source_open(state.camera_url);
-    if(isrc == NULL){
-      printf("Error opening device\n");
-    }
-    else{
-      isrc->start(isrc);
-      //printf("isrc->start");
-    }
+
     gameboard new_board;
     do{
       std::vector<int> red_center_list;
@@ -171,7 +168,7 @@ void command_loop(){
       image_u32_t* im;
       pthread_mutex_lock(&state.data_mutex);
       image_source_data_t *frmd = (image_source_data_t*) calloc(1, sizeof(image_source_data_t));
-      int res = isrc->get_frame(isrc, frmd);
+      int res = state.isrc->get_frame(state.isrc, frmd);
       if(res < 0){
 	printf("get_frame fail\n");
       }
@@ -179,7 +176,7 @@ void command_loop(){
 	im = image_convert_u32(frmd);
       }
       fflush(stdout);
-      isrc->release_frame(isrc,frmd);
+      state.isrc->release_frame(state.isrc,frmd);
 
       if(state.corner_coords[0].x != -1 && 
 	 state.corner_coords[0].y != -1 && 
@@ -210,36 +207,42 @@ void command_loop(){
 							       state.corner_coords[1].y,
 							       state.cal.get_cyan()); 
 	} 
+      max_min_hsv cyan = state.cal.get_cyan();
+      cout << cyan.get_max_HSV().H << " " << cyan.get_max_HSV().S << " " << cyan.get_max_HSV().V << endl;
+      image_u32_write_pnm(im, "picture_no_blobs");
       pthread_mutex_unlock(&state.data_mutex);
       if(cyan_center_list.empty())
-	cout << "Cyan squares not detected. Recalibrate" << endl;
+	cout << "Cyan1 squares not detected. Recalibrate" << endl;
       if(green_center_list.empty())
-	cout << "The curious case of the vanishing green balls" << endl;
+	cout << "The curious case of the vanishing green1 balls" << endl;
       if(red_center_list.empty())
-	cout << "The curious case of the vanishing red balls" << endl;
+	cout << "The curious case of the vanishing red1 balls" << endl;
 
       state.game_board.update_entire_board(
 					   state.board_state.determineStateofBoard(
 										   green_center_list,red_center_list,cyan_center_list,
-										   im->width,im->height,state.cal));
+										   im->width,im->height,state.cal, state.color));
 
       state.game_board.print_board();
 
       int pos = state.ai.calc_move(state.game_board.get_board(state.ai.get_player()));
       eecs467::Point<double> free_ball;
-      if(state.board_state.ballsLeft())
+      if(state.board_state.ballsLeft()){
 	free_ball = state.board_state.nextFreeBall();
+	std::cout << '\t' << free_ball.x << ' ' << free_ball.y << std::endl;
+      }
       else{
 	cout << "No free balls." << endl;
 	continue;
       }
     
+      cout << "Pick up @ " << free_ball.x << ' ' << free_ball.y << endl;
       state.inv_kin.pick_up(free_ball.x, free_ball.y);
       state.inv_kin.place_08(pos);
       image_u32_destroy(im);
-      /*
+      
       frmd = (image_source_data_t*) calloc(1, sizeof(image_source_data_t));
-      res = isrc->get_frame(isrc, frmd);
+      res = state.isrc->get_frame(state.isrc, frmd);
       if(res < 0){
 	printf("get_frame fail\n");
       }
@@ -247,7 +250,7 @@ void command_loop(){
 	im = image_convert_u32(frmd);
       }
       fflush(stdout);
-      isrc->release_frame(isrc,frmd);
+      state.isrc->release_frame(state.isrc,frmd);
 
       if(state.corner_coords[0].x != -1 && 
 	 state.corner_coords[0].y != -1 && 
@@ -287,29 +290,28 @@ void command_loop(){
 
       new_board.update_entire_board(
 		       state.board_state.determineStateofBoard(
-			                 green_center_list,red_center_list,cyan_center_list,
-					 im->width,im->height,state.cal));
+							       green_center_list,red_center_list,cyan_center_list,
+							       im->width,im->height,state.cal, state.color));
 
       new_board.print_board();
-    } while(new_board == state.game_board);
-      */
+      //} while(new_board == state.game_board);
+      
     }while(0);
-
-    ttt_turn_t msg;
-    msg.utime = utime_now();
-    if(state.color == 'G'){
-      msg.turn = state.green_turn_num;
-      ++state.green_turn_num;
-    }
-    else{
-      msg.turn = state.red_turn_num;
-      ++state.red_turn_num;
-    }
-    
-    
-    ttt_turn_t_publish(state.lcm,
-			state.send_chan,
-			&msg);
+    state.our_turn = false;
+  ttt_turn_t msg;
+  msg.utime = utime_now();
+  if(state.color == 'G'){
+    msg.turn = state.green_turn_num;
+    ++state.green_turn_num;
+  }
+  else{
+    msg.turn = state.red_turn_num;
+    ++state.red_turn_num;
+  }    
+  
+  ttt_turn_t_publish(state.lcm,
+		     state.send_chan,
+		     &msg);
   }
   int win = state.game_board.is_win(state.ai.get_player());
   if(win == 1){
@@ -322,23 +324,23 @@ void command_loop(){
     cout << "We lost" << endl;
   }
   exit(0);
-}
 
+}
 static void render_loop()
 {
+  while(state.color != 'R' and state.color != 'G'){}
+  cout << "Render loop" << endl;
   usleep(1000000);
-  int fps = 60;
-  image_source_t *isrc = NULL;
-  if(!state.usePic){
-    isrc = image_source_open(state.camera_url);
-    if(isrc == NULL){
-      printf("Error opening device\n");
-    }
-    else{
-      isrc->start(isrc);
-      //printf("isrc->start");
-    }
+  cout << "Starting Camera " << state.camera_url << endl;
+  state.isrc = NULL;
+  state.isrc = image_source_open(state.camera_url);
+  if(state.isrc == NULL){
+    printf("Error opening device\n");
   }
+  else{
+    state.isrc->start(state.isrc);
+  }
+  int fps = 60;
   while (1) {
     pthread_mutex_lock(&state.data_mutex);
     vx_buffer_t *buf = vx_world_get_buffer(state.vxworld,"image");
@@ -349,9 +351,9 @@ static void render_loop()
     if(state.usePic){
       im = image_u32_create_from_pnm(state.pic_url); 
     }
-    else if(isrc != NULL){
+    else if(state.isrc != NULL){
       image_source_data_t *frmd = (image_source_data_t*) calloc(1,sizeof(*frmd));
-      int res = isrc->get_frame(isrc,frmd);
+      int res = state.isrc->get_frame(state.isrc,frmd);
       if(res < 0){
 	printf("get_frame fail\n");
       }
@@ -359,14 +361,35 @@ static void render_loop()
 	im = image_convert_u32(frmd);
       }
       fflush(stdout);
-      isrc->release_frame(isrc,frmd);
+      state.isrc->release_frame(state.isrc,frmd);
     }
-    if(state.corner_coords[0].x != -1 && state.corner_coords[0].y != -1 && state.corner_coords[1].x != -1 && state.corner_coords[1].y != -1){  
-      state.im_processor.image_masking(im,state.corner_coords[0].x,state.corner_coords[1].x,state.corner_coords[0].y,state.corner_coords[1].y);
-      state.continuous_red_centers = state.im_processor.blob_detection(im,state.corner_coords[0].x,state.corner_coords[1].x,state.corner_coords[0].y,state.corner_coords[1].y,state.cal.get_red());
-      state.continuous_green_centers = state.im_processor.blob_detection(im,state.corner_coords[0].x,state.corner_coords[1].x,state.corner_coords[0].y,state.corner_coords[1].y,state.cal.get_green()); 
-      cyan_center_list = state.im_processor.blob_detection(im, state.corner_coords[0].x,state.corner_coords[1].x,state.corner_coords[0].y,state.corner_coords[1].y,state.cal.get_cyan()); 
-      //printf("numCenters %d %d %d\n",red_center_list.size(),green_center_list.size(), cyan_center_list.size());
+    if(state.corner_coords[0].x != -1 && 
+       state.corner_coords[0].y != -1 && 
+       state.corner_coords[1].x != -1 && 
+       state.corner_coords[1].y != -1){  
+      state.im_processor.image_masking(im,
+				       state.corner_coords[0].x,
+				       state.corner_coords[1].x,
+				       state.corner_coords[0].y,
+				       state.corner_coords[1].y);
+      state.continuous_red_centers = state.im_processor.blob_detection(im,
+								       state.corner_coords[0].x,
+								       state.corner_coords[1].x,
+								       state.corner_coords[0].y,
+								       state.corner_coords[1].y,
+								       state.cal.get_red());
+      state.continuous_green_centers = state.im_processor.blob_detection(im,
+									 state.corner_coords[0].x,
+									 state.corner_coords[1].x,
+									 state.corner_coords[0].y,
+									 state.corner_coords[1].y,
+									 state.cal.get_green()); 
+      cyan_center_list = state.im_processor.blob_detection(im, 
+							   state.corner_coords[0].x,
+							   state.corner_coords[1].x,
+							   state.corner_coords[0].y,
+							   state.corner_coords[1].y,
+							   state.cal.get_cyan()); 
     } 
     if(!state.continuous_red_centers.empty()){
       for(int i=0;i<state.continuous_red_centers.size();++i){
@@ -375,7 +398,7 @@ static void render_loop()
 	state.im_processor.draw_circle(im,x,y,10.0,0xff0000ff);
       }
     }
-    if(state.continuous_green_centers.empty()){
+    if(!state.continuous_green_centers.empty()){
       for(int i=0;i<state.continuous_green_centers.size();++i){
 	int y = (state.continuous_green_centers[i])/im->width;
 	int x = state.continuous_green_centers[i]%im->width;
@@ -439,9 +462,6 @@ static void display_started(vx_application_t *app, vx_display_t *disp){
 
 
   state.cal.read_tx_mat("../calibration/transform_elements.txt");
-  state.inv_kin.set_lcm(state.lcm);
-  state.inv_kin.set_com_channel(state.command_channel);
-  state.inv_kin.go_home();
 
   state.cal.read_mask("../calibration/mask_rect.txt");
   vector<float> xys = state.cal.get_mask();
@@ -449,6 +469,10 @@ static void display_started(vx_application_t *app, vx_display_t *disp){
   state.corner_coords[1].x = xys[1];
   state.corner_coords[0].y = xys[2];
   state.corner_coords[1].y = xys[3];
+
+  state.cal.read_red_range("../calibration/red_hsv_range.txt");
+  state.cal.read_green_range("../calibration/green_hsv_range.txt");
+  state.cal.read_cyan_range("../calibration/cyan_hsv_range.txt");
 
   pthread_mutex_unlock(&state.mutex);
 }
@@ -491,15 +515,20 @@ static void destroy_stuff(){
 }
 
 int main(int argc, char *argv[]){
-  
+  state.lcm = lcm_create (NULL);
   init_stuff();
+  state.color = 'q';
+  while(state.color != 'G' && state.color != 'R'){
+    cout << "Which color are you playing as?" << endl;
+    cin >> state.color;
+  }
 
   getopt_add_bool (state.gopt, 'h', "help", 0, "Show this help screen");
   getopt_add_bool (state.gopt, 'i', "idle", 0, "Command all servos to idle");
   getopt_add_string (state.gopt, '\0', "status-channel", "ARM_STATUS", "LCM status channel");
   getopt_add_string (state.gopt, '\0', "command-channel", "ARM_COMMAND", "LCM command channel");
-  getopt_add_string (state.gopt, '\0', "receive-channel", "A2_TTT", "LCM a2_ttt recv channel");
-  getopt_add_string (state.gopt, '\0', "send-channel", "A2_TTT", "LCM a2_ttt send channel");
+  getopt_add_string (state.gopt, '\0', "green-channel", "GREEN_TURN", "LCM green channel");
+  getopt_add_string (state.gopt, '\0', "red-channel", "RED_TURN", "LCM red channel");
   getopt_add_string (state.gopt, 'f', "picurl", "", "Picture URL");
 
 
@@ -525,26 +554,40 @@ int main(int argc, char *argv[]){
     printf("get camera address\n");
   }
 
-  state.lcm = lcm_create (NULL);
+  
+
   state.command_channel = getopt_get_string (state.gopt, "command-channel");
   state.status_channel = getopt_get_string (state.gopt, "status-channel");
-  state.recv_chan = getopt_get_string (state.gopt, "receive-channel");
-  state.send_chan = getopt_get_string (state.gopt, "send-channel");
-  
+  //state.recv_chan = getopt_get_string (state.gopt, "receive-channel");
+  //state.send_chan = getopt_get_string (state.gopt, "send-channel");
+  if(state.color == 'G'){
+    state.send_chan = getopt_get_string(state.gopt, "green-channel");
+    state.recv_chan = getopt_get_string(state.gopt, "red-channel");
+  }
+  if(state.color == 'R'){
+    state.send_chan = getopt_get_string(state.gopt, "red-channel");
+    state.recv_chan = getopt_get_string(state.gopt, "green-channel");
+  }
+  cout << "post gopt " << state.send_chan << endl;
   //vx
   gdk_threads_init();
   gdk_threads_enter();
   gtk_init(&argc, &argv);
 
+  state.inv_kin.set_lcm(state.lcm);
+  state.inv_kin.set_com_channel(state.command_channel);
+  state.inv_kin.go_home();
   state.status_thread = thread(status_loop);
   state.command_thread = thread(command_loop);
   state.animate_thread = thread(render_loop);
+
   state.appwrap = vx_gtk_display_source_create(&state.vxapp);
   GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   GtkWidget * canvas = vx_gtk_display_source_get_widget(state.appwrap);
   gtk_window_set_default_size (GTK_WINDOW (window), 640, 480);
   gtk_container_add(GTK_CONTAINER(window), canvas);
   gtk_widget_show (window);
+  cout << "showing stuff" << endl;
   gtk_widget_show (canvas); // XXX Show all causes errors!
   g_signal_connect_swapped(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   gtk_main(); // Blocks as long as GTK window is open

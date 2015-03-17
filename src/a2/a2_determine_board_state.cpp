@@ -223,10 +223,13 @@ class state_t
 					}
 				}
 				
+				if(cyan_center_list.empty()){
+				  std::cout<<"Cyan list is empty"<<std::endl;
+				}
 				state->game_board.update_entire_board(
 						state->board_state.determineStateofBoard(
 						green_center_list,red_center_list,cyan_center_list,
-						im->width,im->height,state->cal));
+						im->width,im->height,state->cal,'R'));
 
 				state->game_board.print_board();
 

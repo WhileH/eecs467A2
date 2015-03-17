@@ -264,6 +264,7 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
       }
       else if(state.nine_squares_count == 9){
 	fclose(state.nine_squares);
+	++state.nine_squares_count;
       }
     }
   }

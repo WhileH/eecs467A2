@@ -159,11 +159,17 @@ void inv_kinematics::place(double x, double y)
 
 void inv_kinematics::place_08(int pos)
 {
+  if((pos<0) || (pos>8)){
+    cout << "Invalid pos. Must be in range (0, 8)" << endl;
+    return;
+  }
+    
   ifstream file("../calibration/nine_squares.txt");
   double x, y;
   for(int i=-1; i<pos; ++i){
     file >> x >> y;
   }
+  cout << "Place_08 to " << x << " " << y << endl;
   place(x,y);
 }
 

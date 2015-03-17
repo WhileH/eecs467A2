@@ -18,7 +18,7 @@ class BoardState {
 	
 private:
 	
-	std::vector < eecs467::Point <int> > availBalls; 
+	std::vector < eecs467::Point <double> > availBalls; 
 
 public:
 
@@ -29,12 +29,12 @@ public:
 	and determines the state of the board	
 	*/	
 	std::vector <char> determineStateofBoard(std::vector <int>& greenBalls, std::vector 
-				<int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int 					imgHeight,calibration_t &cali);	
+						 <int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int 					imgHeight,calibration_t &cali, char color);	
 
 	// returns num of balls left to place
 	int ballsLeft();
 	
-	eecs467::Point <int> nextFreeBall();
+	eecs467::Point <double> nextFreeBall();
 
   eecs467::Point<int> convert(eecs467::Point<double> p, double d);
 	

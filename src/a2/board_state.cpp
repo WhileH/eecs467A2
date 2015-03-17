@@ -6,14 +6,16 @@ int BoardState::ballsLeft() {
 	return availBalls.size();
 }
 
-eecs467::Point <int> BoardState::nextFreeBall() {
-		eecs467::Point <int> point = availBalls[0];
+eecs467::Point <double> BoardState::nextFreeBall() {
+		eecs467::Point <double> point = availBalls[0];
+		
 		availBalls.erase(availBalls.begin());
+		std::cout << '\t' << point.x << ' ' << point.y << std::endl;
 		return point;
 }
 	
 std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBalls, 
-     std::vector <int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int imgHeight,calibration_t &cali) {
+						     std::vector <int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int imgHeight,calibration_t &cali, char color) {
 	
 	//clear vectors
 	availBalls.clear();
@@ -61,20 +63,21 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 		point.y = imgHeight - (redBalls[i]/imgWidth); 
 			
 		point = cali.translate(point);
-		std::cout << "orig" << point.x << "," <<point.y << std::endl;
-		double xBoard = floor(point.x/gridCellSize);
-		double yBoard = floor(point.y/gridCellSize);
 
 		double d = fabs(point.x) + fabs(point.y);
+		std::cout << "redBall \t" << point.x << "," << point.y << std::endl;
 
-		std::cout << "red: "<< xBoard << ' '<< yBoard << "  " << d << std::endl;
-
-		if( (point.x > 0) || (point.y >= sq1Point.y) || (point.y <= -1*sq1Point.y))
+		if( (point.x > 0) || (point.y >= fabs(sq1Point.y)) || (point.y <= -1*fabs(sq1Point.y)) ){
+		  if(color == 'R') {
+		  std::cout << "Pushing back: " << point.x << ' ' << point.y << std::endl;
 			availBalls.push_back(point);
+		  }
+		}
 		else {
 		  point = convert(point, d); //converts to board coordinates
 		  std::cout << "red_convert: "<< point.x << ' '<< point.y <<std::endl;
-			camBoard[3 * point.x + point.y] = 'R';
+		  if(point.x != 99)
+		    camBoard[3 * point.x + point.y] = 'R';
 		}
 
 	}
@@ -86,20 +89,20 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 		point.y = imgHeight - (greenBalls[i]/imgWidth); 
 			
 		point = cali.translate(point);
-		std::cout << "orig" << point.x << "," <<point.y << std::endl;
-		double xBoard = floor(point.x/gridCellSize);
-		double yBoard = floor(point.y/gridCellSize);
 
 		double d = fabs(point.x) + fabs(point.y);
+		std::cout << "greenBall \t" << point.x << "," << point.y << std::endl;
 
-		std::cout << "Green: "<< xBoard << ' '<< yBoard << "  " << d << std::endl;
-
-		if( (point.x > 0) || (point.y >= sq1Point.y) || (point.y <= -1*sq1Point.y))
+		if( (point.x > 0) || (point.y >= fabs(sq1Point.y)) || (point.y <= -1*fabs(sq1Point.y))){
+		  if(color == 'G')
 			availBalls.push_back(point);
+		}
+
 		else {
 		  point = convert(point, d); //converts to board coordinates
 		  std::cout << "green_convert: "<< point.x << ' '<< point.y <<std::endl;
-			camBoard[3 * point.x + point.y] = 'G';
+		  if(point.x != 99)
+		    camBoard[3 * point.x + point.y] = 'G';
 		}
 
 	}	
@@ -154,6 +157,10 @@ eecs467::Point<int> BoardState::convert(eecs467::Point<double> p, double d){
   else if ( d>thres3 && d<=thres4 && p.y<0 ) {
     point.x = 2;
     point.y = 2;
+  }
+  else {
+    point.x = 99;
+    point.y = 99;
   }
 		
   return point;
