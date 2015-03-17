@@ -74,7 +74,7 @@ void inv_kinematics::move_2_pos(double x, double y)
   double beta = facos((-(d3*d3) + (d2*d2) + M_squared) / (2.0 * d2 * sqrt(M_squared)));
   double gamma = facos(((-1)*M_squared + (d2*d2) + (d3*d3)) / (2.0 * d2 * d3));
   
-  angles[0] = atan2(y, x);
+  angles[0] = atan2(y, x) + 0.2;
   angles[1] = (M_PI/2.0) - alpha - beta;
   angles[2] = M_PI - gamma;
   angles[3] = M_PI - angles[1] - angles[2];
