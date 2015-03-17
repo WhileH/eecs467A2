@@ -1,7 +1,7 @@
 #include "arm_ai.hpp"
 #include <stdio.h>
 #include <vector>
-arm_ai::arm_ai(char p){
+arm_ai::arm_ai(char p){ 
     player = p;
 }
 

@@ -52,6 +52,8 @@ struct state
   int im_height;
   //eecs467::Point<double> arm_coords_inCam;
   FILE *printfile;
+  FILE *nine_squares;
+  int nine_squares_count;
   bool has_tx;
   matd_t *tx_mat;
 
@@ -256,6 +258,13 @@ static int mouse_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_camera_pos_t
       ground_in_arm[1] = matd_get(state.tx_mat, 1, 0)*ground[0] + matd_get(state.tx_mat, 1, 1)*ground[1] + matd_get(state.tx_mat, 1, 2)*ground[2];
       ground_in_arm[2] = matd_get(state.tx_mat, 2, 0)*ground[0] + matd_get(state.tx_mat, 2, 1)*ground[1] + matd_get(state.tx_mat, 2, 2)*ground[2];
       printf("Mouse click in arm coords: (%f, %f, %f)\n", ground_in_arm[0], ground_in_arm[1], ground_in_arm[2]);
+      if(state.nine_squares_count < 9){
+	fprintf(state.nine_squares,"%f %f\n",ground_in_arm[0],ground_in_arm[1]);
+	++state.nine_squares_count;
+      }
+      else if(state.nine_squares_count == 9){
+	fclose(state.nine_squares);
+      }
     }
   }
   state.last_mouse_event = *mouse;
@@ -379,6 +388,8 @@ static void init_stuff(){
   state.has_tx = false;
   state.gopt = getopt_create(); 
   FILE *fp = fopen("../calibration/mask_rect.txt","r");
+  state.nine_squares = fopen("../calibration/nine_squares.txt","w");
+  state.nine_squares_count = 0;
   fscanf(fp,"%f %f %f %f\n",&state.corner_coords[0].x,&state.corner_coords[1].x,&state.corner_coords[0].y,&state.corner_coords[1].y);
   printf("coord: %f %f %f %f\n",state.corner_coords[0].x,state.corner_coords[1].x,state.corner_coords[0].y,state.corner_coords[1].y);
   //red_hsv.read_hsv_from_file("../calibration/red_hsv_range.txt");

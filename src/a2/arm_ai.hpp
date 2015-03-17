@@ -4,6 +4,7 @@
 
 class arm_ai{
     public:
+	arm_ai(){}
         arm_ai(char p);    
         int calc_move(std::vector<int> board);//didn't modify board
         int is_win(const std::vector<int> board);

@@ -42,11 +42,13 @@ BIN_A2_IMAGE_TO_ARM_COORD = $(BIN_PATH)/a2_image_to_arm_coord
 BIN_A2_AI_TEST = $(BIN_PATH)/a2_ai_test
 BIN_CLICK_AND_MOVE = $(BIN_PATH)/click_and_move
 BIN_A2_DETERMINE_BOARD_STATE = $(BIN_PATH)/a2_determine_board_state
+BIN_A2_TTT = $(BIN_PATH)/a2_ttt
 
 
 ALL = $(LIB_A2) $(BIN_A2_MASK) $(BIN_A2_COLOR_PICKER) $(BIN_A2_BLOB_DETECTOR) \
 	$(BIN_A2_INVERSE_KINEMATICS) $(BIN_A2_IMAGE_TO_ARM_COORD) \
-	$(BIN_A2_AI_TEST) $(BIN_CLICK_AND_MOVE) $(BIN_A2_DETERMINE_BOARD_STATE)
+	$(BIN_A2_AI_TEST) $(BIN_CLICK_AND_MOVE) $(BIN_A2_DETERMINE_BOARD_STATE) \
+	$(BIN_A2_TTT)
 
 all: $(ALL)
 
@@ -87,6 +89,10 @@ $(BIN_CLICK_AND_MOVE): click_and_move.o $(LIB_A2) $(LIBDEPS)
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(BIN_A2_DETERMINE_BOARD_STATE): a2_determine_board_state.o $(LIB_A2) $(LIBDEPS)
+	@echo "\t$@"
+	@$(CXX) -o $@ $^ $(LDFLAGS)
+
+$(BIN_A2_TTT): a2_ttt.o $(LIB_A2) $(LIBDEPS)
 	@echo "\t$@"
 	@$(CXX) -o $@ $^ $(LDFLAGS)
 

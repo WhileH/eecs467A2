@@ -157,6 +157,16 @@ void inv_kinematics::place(double x, double y)
   return;
 }
 
+void inv_kinematics::place_08(int pos)
+{
+  ifstream file("../calibration/nine_squares.txt");
+  double x, y;
+  for(int i=-1; i<pos; ++i){
+    file >> x >> y;
+  }
+  place(x,y);
+}
+
 void inv_kinematics::set_cmds(dynamixel_command_list_t &command_list)
 {
   cmds = command_list;

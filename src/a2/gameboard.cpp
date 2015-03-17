@@ -87,3 +87,12 @@ std::vector<int> gameboard::get_board(char pieces){
     //printf("\n");
     return b;
 }
+
+bool gameboard::operator==(const gameboard& rhs){
+  for(int i=0;i<9;++i){
+    if(this->board[i] != rhs.board[i]){
+      return false;
+    }
+  }
+  return true;
+}
