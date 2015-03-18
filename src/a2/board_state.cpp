@@ -1,7 +1,18 @@
 #include "board_state.hpp"
 using namespace std;
 
-BoardState::BoardState() {	}
+BoardState::BoardState() {
+  ifstream cyan_file("../calibration/cyan_centers.txt");
+  eecs467::Point<int> c;
+  while(cyan_file >> c.x >> c.y){
+    cyan_squares.push_back(c);
+    cout << c.x << ' ' << c.y << endl;
+  }
+  board_squares = vector<eecs467::Point<double>>(9);
+  cout << '\t' << board_squares.size() << endl;
+  
+  
+}
 
 int BoardState::ballsLeft() {
   return availBalls.size();
@@ -16,11 +27,12 @@ eecs467::Point <double> BoardState::nextFreeBall() {
 }
 	
 std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBalls, 
-						     std::vector <int>& redBalls, std::vector <int>& cyanSquares, int imgWidth, int imgHeight,calibration_t &cali, char color) {
+						     std::vector <int>& redBalls, int imgWidth, int imgHeight,calibration_t &cali, char color) {
 	
   //clear vectors
   availBalls.clear();
 	
+
   //initilize board
   std::vector<char> camBoard;
   for(unsigned int i = 0; i < 9; i++) 
@@ -28,9 +40,11 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 
   //get distance between registration squares (pixels to meters)
   //not needed annymore, will keep temporarily for sanity checks
-  eecs467::Point<double> sq1Point;
-  eecs467::Point<double> sq4Point;
-	 
+  eecs467::Point<double> sq1Point = cyan_squares[0];
+  eecs467::Point<double> sq4Point= cyan_squares.back();
+   std::cout << "    cyan " << sq1Point.x << "," << sq1Point.y << std::endl;
+  std::cout << "    cyan " << sq4Point.x << "," << sq4Point.y << std::endl;
+  /*
   std::sort(cyanSquares.begin(), cyanSquares.end());
 
   std::cout<<"sorted cyanSquares here"<<std::endl;
@@ -44,12 +58,17 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
   sq4Point.y = imgHeight - (cyanSquares[3]/imgWidth);
   std::cout<< "sq1Point: "<<sq1Point.x<<" "<< sq1Point.y<<std::endl;
   std::cout<< "sq2Point: "<<sq4Point.x<<" "<< sq4Point.y<<std::endl;
+  */
+  sq1Point.y = imgHeight - sq1Point.y;
+  sq4Point.y = imgHeight - sq4Point.y;
   sq1Point = cali.translate(sq1Point);
   sq4Point = cali.translate(sq4Point);
 
+  int q = convert(sq1Point, sq1Point, sq4Point);
+
   std::cout << "cyan " << sq1Point.x << "," << sq1Point.y << std::endl;
   std::cout << "cyan " << sq4Point.x << "," << sq4Point.y << std::endl;
-
+  //exit(1);
   //parameters used to calulate board position
   double x_o = sq1Point.x;
   double y_o = sq1Point.y;
@@ -174,58 +193,6 @@ std::vector <char> BoardState::determineStateofBoard(std::vector <int>& greenBal
 }
 
 int BoardState::convert(eecs467::Point<double> p, eecs467::Point<double> sq1, eecs467::Point<double> sq4){
-	
-  /*
-  //d = round(d * 20.0) / 20.0;
-  //std::cout << '\t' << d << std::endl;
-  eecs467::Point<int> point;
-  double l_thres1 = 0.04;
-  double thres1 = 0.095;
-  double thres2 = 0.16;
-  double thres3 = 0.21;
-  double thres4 = 0.27;
-
-  if ( d>= l_thres1 && d <= thres1 ) {
-  point.x = 0;
-  point.y = 1;
-  }
-  else if ( d>thres1 && d<=thres2 && p.y>0 && fabs(p.x)<=thres1) {
-  point.x = 0;
-  point.y = 0;
-  }
-  else if ( d>thres1 && d<=thres2 && p.y<0 && fabs(p.x)<=thres1) {
-  point.x = 0;
-  point.y = 2;
-  }
-  else if ( d>thres1 && d<=thres2 && fabs(p.x)>=thres1 ) {
-  point.x = 1;
-  point.y = 1;
-  }
-  else if ( d>thres2 && d<=thres3 && p.y>0 && fabs(p.x)<=thres2 ) {
-  point.x = 1;
-  point.y = 0;
-  }
-  else if ( d>thres2 && d<=thres3 && p.y<0 && fabs(p.x)<=thres2 ) {
-  point.x = 1;
-  point.y = 2;
-  }
-  else if ( d>thres2 && d<=thres3 && fabs(p.x)>thres2 ) {
-  point.x = 2;
-  point.y = 1;
-  }
-  else if ( d>thres3 && d<=thres4 && p.y>0 ) {
-  point.x = 2;
-  point.y = 0;
-  }
-  else if ( d>thres3 && d<=thres4 && p.y<0 ) {
-  point.x = 2;
-  point.y = 2;
-  }
-  else {
-  point.x = 99;
-  point.y = 99;
-  }
-  */
 
   //double len = sqrt(sq(sq1.x + sq4.x) + sq(sq1.y + sq4.y));
   double sqSize = gridCellSize;
@@ -233,45 +200,45 @@ int BoardState::convert(eecs467::Point<double> p, eecs467::Point<double> sq1, ee
   center.x = (sq1.x + sq4.x)/2.0;
   center.y = (sq1.y + sq4.y)/2.0;
   
-  vector<eecs467::Point<double>> b(9);
+  //vector<eecs467::Point<double>> b(9);
 
   /*
    *  b0   b1   b2
    *  b3   b4   b5
    *  b6   b7   b8
    */
-  b[0].x = center.x + sqSize;
-  b[0].y = center.y + sqSize;
+  board_squares[0].x = center.x + sqSize;
+  board_squares[0].y = center.y + sqSize;
 
-  b[1].x = center.x + sqSize;
-  b[1].y = center.y;
+  board_squares[1].x = center.x + sqSize;
+  board_squares[1].y = center.y;
 
-  b[2].x = center.x + sqSize;
-  b[2].y = center.y - sqSize;
+  board_squares[2].x = center.x + sqSize;
+  board_squares[2].y = center.y - sqSize;
 
-  b[3].x = center.x;
-  b[3].y = center.y + sqSize;
+  board_squares[3].x = center.x;
+  board_squares[3].y = center.y + sqSize;
 
-  b[4].x = center.x;
-  b[4].y = center.y;
+  board_squares[4].x = center.x;
+  board_squares[4].y = center.y;
   
-  b[5].x = center.x;
-  b[5].y = center.y - sqSize;
+  board_squares[5].x = center.x;
+  board_squares[5].y = center.y - sqSize;
 
-  b[6].x = center.x - sqSize;
-  b[6].y = center.y + sqSize;
+  board_squares[6].x = center.x - sqSize;
+  board_squares[6].y = center.y + sqSize;
 
-  b[7].x = center.x - sqSize;
-  b[7].y = center.y;
+  board_squares[7].x = center.x - sqSize;
+  board_squares[7].y = center.y;
   
-  b[8].x = center.x - sqSize;
-  b[8].y = center.y - sqSize;
+  board_squares[8].x = center.x - sqSize;
+  board_squares[8].y = center.y - sqSize;
 
 
   double minDist = 1.0;
   int closest = -1;
-  for(int i=0; i<b.size(); ++i){
-    double pD = sqrt(sq(p.x - b[i].x) + sq(p.y - b[i].y));
+  for(int i=0; i<board_squares.size(); ++i){
+    double pD = sqrt(sq(p.x - board_squares[i].x) + sq(p.y - board_squares[i].y));
     if(pD < minDist){
       minDist = pD;
       closest = i;

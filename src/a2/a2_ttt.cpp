@@ -90,6 +90,7 @@ struct state
   thread command_thread;
   thread animate_thread;
   thread run_thread;
+  thread send_thread;
 
   pthread_mutex_t mutex;
   pthread_mutex_t data_mutex;
@@ -106,15 +107,20 @@ static void status_handler(const lcm_recv_buf_t *rbuf,
 }
 
 static void turn_handler(const lcm_recv_buf_t *rbuf,
-			   const char *channel,
-			   const ttt_turn_t *msg,
-			   void *user){
+			 const char *channel,
+			 const ttt_turn_t *msg,
+			 void *user){
   //don't do anything
   pthread_mutex_lock(&state.arm_mutex);
-  state.our_turn = true;
-  if(state.color == 'G')
+  //cout << "Received msg " << msg->turn << endl;
+  if(state.color == 'G'){
+    if(state.red_turn_num != msg->turn)
+      state.our_turn = true;
     state.red_turn_num = msg->turn;
+  }
   else if(state.color == 'R')
+    if(state.green_turn_num != msg->turn)
+      state.our_turn = true;
     state.green_turn_num = msg->turn;
   pthread_mutex_unlock(&state.arm_mutex);
 }
@@ -152,14 +158,16 @@ void command_loop(){
     int i = 0;
     while(!state.our_turn){
       pthread_mutex_unlock(&state.arm_mutex);
-      //if(!i)
+      if(!i)
 	cout << "Waiting for turn" << endl;
       ++i;
-      usleep(250000);
+      //state.inv_kin.wave();
       pthread_mutex_lock(&state.arm_mutex);
     }
     pthread_mutex_unlock(&state.arm_mutex);
-
+    if(state.game_board.is_finished() || (state.game_board.is_win(state.ai.get_player()) != 0)){
+      break;
+    }
     gameboard new_board;
     do{
       std::vector<int> red_center_list;
@@ -220,12 +228,13 @@ void command_loop(){
 
       state.game_board.update_entire_board(
 					   state.board_state.determineStateofBoard(
-										   green_center_list,red_center_list,cyan_center_list,
+										   green_center_list,red_center_list,
 										   im->width,im->height,state.cal, state.color));
 
       state.game_board.print_board();
 
       int pos = state.ai.calc_move(state.game_board.get_board(state.ai.get_player()));
+      
       eecs467::Point<double> free_ball;
       if(state.board_state.ballsLeft()){
 	free_ball = state.board_state.nextFreeBall();
@@ -238,7 +247,11 @@ void command_loop(){
     
       cout << "Pick up @ " << free_ball.x << ' ' << free_ball.y << endl;
       state.inv_kin.pick_up(free_ball.x, free_ball.y);
-      state.inv_kin.place_08(pos);
+
+      //state.inv_kin.place_08(pos);
+      eecs467::Point<double> arm_pos = state.board_state.board_squares[pos];
+      cout << "Place @ " << arm_pos.x << " " << arm_pos.y << endl;
+      state.inv_kin.place(arm_pos.x, arm_pos.y);
       image_u32_destroy(im);
       
       frmd = (image_source_data_t*) calloc(1, sizeof(image_source_data_t));
@@ -289,43 +302,74 @@ void command_loop(){
 	cout << "The curious case of the vanishing red balls" << endl;
 
       new_board.update_entire_board(
-		       state.board_state.determineStateofBoard(
-							       green_center_list,red_center_list,cyan_center_list,
-							       im->width,im->height,state.cal, state.color));
+				    state.board_state.determineStateofBoard(
+									    green_center_list,red_center_list,
+									    im->width,im->height,state.cal, state.color));
 
       new_board.print_board();
-      //} while(new_board == state.game_board);
+
+      if(new_board.is_finished() || (new_board.is_win(state.ai.get_player()) != 0)){
+	int win = new_board.is_win(state.ai.get_player());
+	if(win == 1){
+	  cout << "We WIN!!" << endl;
+	  for(int i=0; i<10; ++i){
+	    state.inv_kin.wave();
+	  }
+	}
+	else if(win == 0){
+	  cout << "'tis a draw" << endl;
+	}
+	else{
+	  cout << "We lost" << endl;
+	}
+	exit(0);
+	//break;
+      }
+
+    } while(new_board == state.game_board);
       
-    }while(0);
+    //}while(0);
     state.our_turn = false;
-  ttt_turn_t msg;
-  msg.utime = utime_now();
-  if(state.color == 'G'){
-    msg.turn = state.green_turn_num;
-    ++state.green_turn_num;
+    //ttt_turn_t msg;
+    //msg.utime = utime_now();
+    pthread_mutex_lock(&state.data_mutex);
+    if(state.color == 'G'){
+      //msg.turn = state.green_turn_num;
+      ++state.green_turn_num;
+    }
+    else{
+      //msg.turn = state.red_turn_num;
+      ++state.red_turn_num;
+    }    
+    pthread_mutex_unlock(&state.data_mutex);
+    /*
+    ttt_turn_t_publish(state.lcm,
+		       state.send_chan,
+		       &msg);*/
   }
-  else{
-    msg.turn = state.red_turn_num;
-    ++state.red_turn_num;
-  }    
-  
-  ttt_turn_t_publish(state.lcm,
-		     state.send_chan,
-		     &msg);
-  }
-  int win = state.game_board.is_win(state.ai.get_player());
-  if(win == 1){
-    cout << "We WIN!!" << endl;
-  }
-  else if(win == 0){
-    cout << "'tis a draw" << endl;
-  }
-  else{
-    cout << "We lost" << endl;
-  }
-  exit(0);
+
 
 }
+
+static void msg_send_loop(){
+  int hz = 20;
+  while(1){
+    ttt_turn_t msg;
+    pthread_mutex_lock(&state.data_mutex);
+    if(state.color == 'G')
+      msg.turn = state.green_turn_num;
+    else if(state.color == 'R')
+      msg.turn = state.red_turn_num;
+    pthread_mutex_unlock(&state.data_mutex);
+    msg.utime = utime_now();
+    //cout << "sending turn num " << msg.turn << endl;
+    ttt_turn_t_publish(state.lcm,
+		       state.send_chan,
+		       &msg);
+    usleep(1000000/hz);
+  }
+}
+
 static void render_loop()
 {
   while(state.color != 'R' and state.color != 'G'){}
@@ -577,9 +621,11 @@ int main(int argc, char *argv[]){
   state.inv_kin.set_lcm(state.lcm);
   state.inv_kin.set_com_channel(state.command_channel);
   state.inv_kin.go_home();
+
   state.status_thread = thread(status_loop);
   state.command_thread = thread(command_loop);
   state.animate_thread = thread(render_loop);
+  state.send_thread = thread(msg_send_loop);
 
   state.appwrap = vx_gtk_display_source_create(&state.vxapp);
   GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
@@ -600,6 +646,7 @@ int main(int argc, char *argv[]){
   state.status_thread.join();
   state.command_thread.join();
   state.animate_thread.join();
+  state.send_thread.join();
 
   destroy_stuff();
   return 0;

@@ -7,7 +7,7 @@ CXXFLAGS = $(CXXFLAGS_STD) \
      $(CFLAGS_COMMON) \
      $(CFLAGS_LCMTYPES) \
      $(CFLAGS_GSL) \
-     -O2 -w
+     -O3 -w
 LDFLAGS  = $(LDFLAGS_STD) \
 	$(LDFLAGS_VX_GTK) \
 	  $(LDFLAGS_IMAGESOURCE) \

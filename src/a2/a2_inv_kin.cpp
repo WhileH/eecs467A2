@@ -74,7 +74,7 @@ void inv_kinematics::move_2_pos(double x, double y)
   double beta = facos((-(d3*d3) + (d2*d2) + M_squared) / (2.0 * d2 * sqrt(M_squared)));
   double gamma = facos(((-1)*M_squared + (d2*d2) + (d3*d3)) / (2.0 * d2 * d3));
   
-  angles[0] = atan2(y, x) + 0.2;
+  angles[0] = atan2(y, x);
   angles[1] = (M_PI/2.0) - alpha - beta;
   angles[2] = M_PI - gamma;
   angles[3] = M_PI - angles[1] - angles[2];
@@ -91,7 +91,7 @@ void inv_kinematics::move_2_pos(double x, double y)
   //cout << "elbow: " << angles[2] << endl;
   //cout << "wrist: " << angles[3] << endl;
 
-  int servo_order[5] = {0, 4, 3, 2, 1};
+  int servo_order[5] = {4, 3, 0, 2, 1};
   for(auto i : servo_order){
     cmds.commands[i].utime = utime_now();
     if(i == 2)
@@ -124,7 +124,19 @@ void inv_kinematics::go_home()
   dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
   usleep(750000);
 
-  int servo_order[5] = {1, 2, 3, 4, 0};
+  int servo_order[5];
+  if(cmds.commands[1].position_radians < 0){
+    int order[5] = {2, 1, 3, 4, 0};
+    for(int i=0; i<5; ++i){
+      servo_order[i] = order[i];
+    }
+  }
+  else{
+    int order[5] = {1, 2, 3, 4, 0};
+    for(int i=0; i<5; ++i){
+      servo_order[i] = order[i];
+    }
+  }
   for(auto i : servo_order){
     cmds.commands[i].utime = utime_now();
     cmds.commands[i].position_radians = angles[i];
@@ -171,6 +183,24 @@ void inv_kinematics::place_08(int pos)
   }
   cout << "Place_08 to " << x << " " << y << endl;
   place(x,y);
+}
+
+void inv_kinematics::wave(){
+  for(int i=1; i<4; ++i){
+    cmds.commands[i].position_radians = M_PI / 8;
+    dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+    usleep(100000);
+  }
+  for(int i=1; i<4; ++i){
+    cmds.commands[i].position_radians = -M_PI / 8;
+    dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+    usleep(100000);
+  }
+  for(int i=1; i<4; ++i){
+    cmds.commands[i].position_radians = 0;
+    dynamixel_command_list_t_publish(lcm, command_channel, &cmds);
+    usleep(100000);
+  }
 }
 
 void inv_kinematics::set_cmds(dynamixel_command_list_t &command_list)

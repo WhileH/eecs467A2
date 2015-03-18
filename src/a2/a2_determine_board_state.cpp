@@ -228,7 +228,7 @@ public:
       }
       state->game_board.update_entire_board(
 					    state->board_state.determineStateofBoard(
-										     green_center_list,red_center_list,cyan_center_list,
+										     green_center_list,red_center_list,
 										     im->width,im->height,state->cal,'G'));
 
       state->game_board.print_board();

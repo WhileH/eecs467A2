@@ -106,4 +106,3 @@ eecs467::Point<double> calibration_t::translate(eecs467::Point<double> cam_coord
     return ground_in_arm; 
 }
 
-

@@ -1,6 +1,7 @@
 #include <thread>
 #include <pthread.h>
 #include <fstream>
+#include <algorithm>
 
 #include <gtk/gtk.h>
 #include <lcm/lcm-cpp.hpp>
@@ -160,13 +161,23 @@ void render_loop(){
     state.im_proc.image_masking(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y);
     cyan_center_list = state.im_proc.blob_detection(im, state.corner_coords[0].x, state.corner_coords[1].x, state.corner_coords[0].y, state.corner_coords[1].y, state.cyan_hsv);
   }
-  if(!cyan_center_list.empty()){
+  if(cyan_center_list.size() == 4){
+    sort(cyan_center_list.begin(), cyan_center_list.end());
+    //FILE *cfile = fopen("../calibration/cyan_centers.txt","w");
+    ofstream cfile("../calibration/cyan_centers.txt");
     for(int i=0; i<cyan_center_list.size(); ++i){
       int y = (cyan_center_list[i]) / state.im_width;
       int x = (cyan_center_list[i]) % state.im_width;
       state.im_proc.draw_circle(im, x, y, 20.0, 0xffffff00);
       cout << "Centroid[" << i << "]: (" << x << ", " << y << ")" << endl;
+      //fprintf(cfile, "%f %f\n", x, y);
+      cfile << x << ' ' << y << endl;
     }
+    //fclose(cfile);
+  }
+  else{
+    cout << "Initial cyan centroids != 4" << endl;
+    exit(1);
   }
     
   if(im != NULL){
@@ -336,6 +347,7 @@ static int key_event(vx_event_handler_t *vxeh, vx_layer_t *vl, vx_key_event_t *k
       gsl_vector_free(x);
       //fclose(state.printfile);
       fclose(fp);
+      
     }
   }
   pthread_mutex_unlock(&state.data_mutex);

@@ -52,6 +52,7 @@ public:
   void pick_up(double x, double y);
   void place(double x, double y);
   void place_08(int pos);
+  void wave();
   void set_cmds(dynamixel_command_list_t &command_list);
   void set_lcm(lcm_t *l);
   void set_com_channel(const char *com_chan);
