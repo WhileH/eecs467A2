@@ -118,10 +118,11 @@ static void turn_handler(const lcm_recv_buf_t *rbuf,
       state.our_turn = true;
     state.red_turn_num = msg->turn;
   }
-  else if(state.color == 'R')
+  else if(state.color == 'R'){
     if(state.green_turn_num != msg->turn)
       state.our_turn = true;
     state.green_turn_num = msg->turn;
+  }
   pthread_mutex_unlock(&state.arm_mutex);
 }
 
