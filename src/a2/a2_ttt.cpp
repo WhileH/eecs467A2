@@ -170,6 +170,7 @@ void command_loop(){
     }
     gameboard new_board;
     do{
+      cout << '\t' << "Doing turn num " << state.green_turn_num << endl;
       std::vector<int> red_center_list;
       std::vector<int> green_center_list;
       std::vector<int> cyan_center_list;
@@ -362,7 +363,8 @@ static void msg_send_loop(){
       msg.turn = state.red_turn_num;
     pthread_mutex_unlock(&state.data_mutex);
     msg.utime = utime_now();
-    //cout << "sending turn num " << msg.turn << endl;
+    cout << 'R' << " sending turn num " << state.red_turn_num << endl;
+    cout << 'G' << " sending turn num " << state.green_turn_num << endl << endl << endl;
     ttt_turn_t_publish(state.lcm,
 		       state.send_chan,
 		       &msg);
