@@ -364,8 +364,8 @@ static void msg_send_loop(){
       msg.turn = state.red_turn_num;
     pthread_mutex_unlock(&state.data_mutex);
     msg.utime = utime_now();
-    cout << 'R' << " sending turn num " << state.red_turn_num << endl;
-    cout << 'G' << " sending turn num " << state.green_turn_num << endl << endl << endl;
+    //cout << 'R' << " sending turn num " << state.red_turn_num << endl;
+    //cout << 'G' << " sending turn num " << state.green_turn_num << endl << endl << endl;
     ttt_turn_t_publish(state.lcm,
 		       state.send_chan,
 		       &msg);
